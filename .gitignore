@@ -1,84 +1,28 @@
-# Dependencies
-node_modules/
-__pycache__/
-*.pyc
-.venv/
-venv/
-vendor/
-.pnpm-store/
-
-# C# Build artifacts
+# Build outputs
 bin/
 obj/
+out/
 *.dll
 *.pdb
-*.exe
-!OWML.Launcher.exe
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
 
 # NuGet
 packages/
 *.nupkg
-.nuget/
 
-# Visual Studio
-.vs/
-*.rsuser
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-
-# Build outputs
-dist/
-build/
-*.tsbuildinfo
-*.js.map
-*.d.ts.map
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-bld/
-
-# Testing
-coverage/
-
-# Temporary millhouse directories (architectural docs are tracked)
-.millhouse/build/
-.millhouse/session/
-.millhouse/uitest/
-.millhouse/runtime-validation/
-
-# Environment files (never commit secrets)
-.env
-.env.local
-.env.*.local
-
-# User config (not default-config.json)
-config.json
-
-# Claude Code settings
-.claude/
-
-# Logs
-*.log
-
-# OS files
+# OS
 .DS_Store
 Thumbs.db
-# Environment files (added by millhouse)
-*.env
-*.env.*
-*.local
-*.secret
-*.secrets
-config.local.*
-.config.local
-*.key
-*.pem
-*.p12
-.aws/credentials
-.ssh/id_*
 
+# Release artifacts
+release/
+
+# Game-specific
+libs/
+.claude/
+.millhouse/

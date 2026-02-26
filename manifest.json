@@ -1,8 +1,8 @@
 {
-    "filename":  "HeadTracking.dll",
-    "author":  "udkyo",
+    "filename":  "OuterWildsHeadTracking.dll",
+    "author":  "HeadCannon Mods",
     "name":  "Head Tracking",
-    "uniqueName":  "udkyo.HeadTracking",
+    "uniqueName":  "HeadCannon.OuterWildsHeadTracking",
     "version":  "1.0.1",
     "owmlVersion":  "2.9.0",
     "dependencies":  [

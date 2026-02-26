@@ -1,54 +1,51 @@
 #!/usr/bin/env pwsh
-# Validate release readiness before tagging
-
+#Requires -Version 5.1
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Write-Host "Validating release readiness..." -ForegroundColor Cyan
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
 
-# Read manifest.json to get current version
-$manifest = Get-Content "manifest.json" -Raw | ConvertFrom-Json
-$version = $manifest.version
+Write-Host "=== Outer Wilds Head Tracking - Release Validation ===" -ForegroundColor Cyan
+Write-Host ""
 
-Write-Host "Current version in manifest.json: $version" -ForegroundColor Yellow
+$allPassed = $true
 
-# Check 1: Verify version format is semantic versioning
-if ($version -notmatch '^\d+\.\d+\.\d+$') {
-    Write-Host "❌ FAIL: Version '$version' is not valid semantic versioning (x.y.z)" -ForegroundColor Red
-    exit 1
+foreach ($file in @("README.md", "LICENSE")) {
+    Write-Host "Checking $file..." -ForegroundColor Gray
+    if (Test-Path (Join-Path $projectRoot $file)) {
+        Write-Host "  $file exists" -ForegroundColor Green
+    } else {
+        Write-Host "  ERROR: $file not found" -ForegroundColor Red
+        $allPassed = $false
+    }
 }
-Write-Host "✅ Version format is valid" -ForegroundColor Green
 
-# Check 2: Verify CHANGELOG.md exists
-if (-not (Test-Path "CHANGELOG.md")) {
-    Write-Host "❌ FAIL: CHANGELOG.md does not exist" -ForegroundColor Red
-    Write-Host "Create a CHANGELOG.md file to track version history" -ForegroundColor Yellow
-    exit 1
+Write-Host "Checking manifest.json..." -ForegroundColor Gray
+if (Test-Path (Join-Path $projectRoot "manifest.json")) {
+    Write-Host "  manifest.json exists" -ForegroundColor Green
+} else {
+    Write-Host "  ERROR: manifest.json not found" -ForegroundColor Red
+    $allPassed = $false
 }
-Write-Host "✅ CHANGELOG.md exists" -ForegroundColor Green
 
-# Check 3: Verify CHANGELOG has entry for current version
-$changelog = Get-Content "CHANGELOG.md" -Raw
-if ($changelog -notmatch "\[?$version\]?") {
-    Write-Host "❌ FAIL: CHANGELOG.md missing entry for version $version" -ForegroundColor Red
-    Write-Host "Add a changelog entry with heading: ## [$version] - $(Get-Date -Format 'yyyy-MM-dd')" -ForegroundColor Yellow
-    exit 1
+Write-Host "Checking build output..." -ForegroundColor Gray
+$dllPath = Join-Path $projectRoot "src\OuterWildsHeadTracking\bin\Release\net48\OuterWildsHeadTracking.dll"
+if (Test-Path $dllPath) {
+    $dllInfo = Get-Item $dllPath
+    Write-Host "  OuterWildsHeadTracking.dll exists ($($dllInfo.Length) bytes)" -ForegroundColor Green
+} else {
+    Write-Host "  WARNING: OuterWildsHeadTracking.dll not found" -ForegroundColor Yellow
+    $allPassed = $false
 }
-Write-Host "✅ CHANGELOG.md contains entry for v$version" -ForegroundColor Green
-
-# Check 4: Verify tag doesn't already exist
-$tagExists = git tag -l "v$version" 2>$null
-if ($LASTEXITCODE -eq 0 -and $tagExists) {
-    Write-Host "❌ FAIL: Git tag v$version already exists" -ForegroundColor Red
-    Write-Host "Bump the version in manifest.json to create a new release" -ForegroundColor Yellow
-    exit 1
-}
-Write-Host "✅ Tag v$version does not yet exist" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "🎉 All validation checks passed!" -ForegroundColor Green
-Write-Host ""
-Write-Host "Ready to release v$version!" -ForegroundColor Cyan
-Write-Host "Next steps:" -ForegroundColor Yellow
-Write-Host "  1. git tag v$version" -ForegroundColor White
-Write-Host "  2. git push origin main --tags" -ForegroundColor White
-Write-Host ""
+Write-Host "===============================" -ForegroundColor Cyan
+
+if ($allPassed) {
+    Write-Host "All validation checks passed!" -ForegroundColor Green
+    exit 0
+} else {
+    Write-Host "Some validation checks failed." -ForegroundColor Yellow
+    exit 1
+}

@@ -18,10 +18,13 @@ jobs:
   build:
     name: Build and Validate
     runs-on: windows-latest
+    if: ${{ !startsWith(github.event.head_commit.message, 'Release v') }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Setup Pixi
         uses: prefix-dev/setup-pixi@v0.8.1
@@ -42,12 +45,10 @@ jobs:
           $owmlVersion = "2.15.4"
           $owmlUrl = "https://github.com/ow-mods/owml/releases/download/$owmlVersion/OWML.zip"
           $owmlZip = "owml-temp.zip"
-          # SHA256 hash of OWML 2.15.4 release (for integrity verification)
           $expectedHash = "F95D2D14AEE0ADB60F8DB8DAD2100182433827EDD069A8636284E292F9CBC1D2"
 
           Invoke-WebRequest -Uri $owmlUrl -OutFile $owmlZip
 
-          # Verify download integrity
           $actualHash = (Get-FileHash -Path $owmlZip -Algorithm SHA256).Hash
           if ($actualHash -ne $expectedHash) {
             Write-Host "::error::OWML download hash mismatch!"
@@ -56,52 +57,49 @@ jobs:
             exit 1
           }
 
-          Write-Host "✅ OWML download verified" -ForegroundColor Green
+          Write-Host "OWML download verified" -ForegroundColor Green
           Write-Host "Extracting OWML DLLs..." -ForegroundColor Cyan
 
-          # Create libs directory
           New-Item -ItemType Directory -Force -Path "libs" | Out-Null
 
-          # Extract only the DLLs we need
           Expand-Archive -Path $owmlZip -DestinationPath "owml-temp" -Force
           Copy-Item "owml-temp/OWML.Common.dll" "libs/"
           Copy-Item "owml-temp/OWML.ModHelper.dll" "libs/"
           Copy-Item "owml-temp/OWML.ModHelper.Menus.dll" "libs/"
 
-          # Clean up
           Remove-Item $owmlZip
           Remove-Item -Recurse "owml-temp"
 
-          Write-Host "✅ OWML DLLs extracted from verified archive" -ForegroundColor Green
+          Write-Host "OWML DLLs extracted from verified archive" -ForegroundColor Green
 
       - name: Restore NuGet packages
-        run: dotnet restore
+        run: dotnet restore src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj
 
       - name: Build Debug
         shell: pwsh
         run: |
           Write-Host "Building debug configuration..." -ForegroundColor Cyan
-          dotnet build HeadTracking.csproj --configuration Debug
+          dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj --configuration Debug
 
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Debug build failed"
             exit 1
           }
 
-          Write-Host "✅ Debug build succeeded" -ForegroundColor Green
+          Write-Host "Debug build succeeded" -ForegroundColor Green
 
       - name: Build Release
         shell: pwsh
         run: |
           Write-Host "Building release configuration..." -ForegroundColor Cyan
-          dotnet build HeadTracking.csproj --configuration Release
+          dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj --configuration Release
 
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Release build failed"
             exit 1
           }
 
-          Write-Host "✅ Release build succeeded" -ForegroundColor Green
+          Write-Host "Release build succeeded" -ForegroundColor Green
 
       - name: Verify build outputs
         shell: pwsh
@@ -109,17 +107,17 @@ jobs:
           Write-Host "Verifying build outputs..." -ForegroundColor Cyan
 
           $requiredFiles = @(
-            "bin/Debug/net48/HeadTracking.dll",
-            "bin/Release/net48/HeadTracking.dll"
+            "src/OuterWildsHeadTracking/bin/Debug/net48/OuterWildsHeadTracking.dll",
+            "src/OuterWildsHeadTracking/bin/Release/net48/OuterWildsHeadTracking.dll"
           )
 
           $allExist = $true
           foreach ($file in $requiredFiles) {
             if (Test-Path $file) {
               $size = (Get-Item $file).Length / 1KB
-              Write-Host "  ✅ $file ($([math]::Round($size, 2)) KB)" -ForegroundColor Green
+              Write-Host "  $file ($([math]::Round($size, 2)) KB)" -ForegroundColor Green
             } else {
-              Write-Host "  ❌ Missing: $file" -ForegroundColor Red
+              Write-Host "  Missing: $file" -ForegroundColor Red
               $allExist = $false
             }
           }
@@ -129,22 +127,4 @@ jobs:
             exit 1
           }
 
-          Write-Host "✅ All build outputs verified" -ForegroundColor Green
-
-      - name: Check for unwanted dependencies in output
-        shell: pwsh
-        run: |
-          Write-Host "Checking for unwanted DLLs in output..." -ForegroundColor Cyan
-
-          $buildPath = "bin/Release/net48"
-          $dlls = Get-ChildItem "$buildPath/*.dll" | Where-Object { $_.Name -ne "HeadTracking.dll" }
-
-          if ($dlls) {
-            Write-Host "::warning::Found unexpected DLLs in build output:"
-            foreach ($dll in $dlls) {
-              Write-Host "  ⚠️  $($dll.Name)" -ForegroundColor Yellow
-            }
-            Write-Host "These will NOT be included in releases (by design)"
-          } else {
-            Write-Host "✅ No unwanted DLLs in output" -ForegroundColor Green
-          }
+          Write-Host "All build outputs verified" -ForegroundColor Green

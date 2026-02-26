@@ -1,0 +1,3 @@
+[submodule "headcannon-core"]
+	path = headcannon-core
+	url = https://github.com/headcannonmods/headcannon-core

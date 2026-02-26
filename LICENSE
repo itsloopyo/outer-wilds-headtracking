@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 udkyo
+Copyright (c) 2025 HeadCannonMods
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,28 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-Third-Party Software
-
-This project uses the following open-source software:
-
-1. Harmony (Lib.Harmony)
-   - License: MIT License
-   - Version: 2.4.1
-   - Author: Andreas Pardeike
-   - Repository: https://github.com/pardeike/Harmony
-
-2. OWML (Outer Wilds Mod Loader)
-   - License: MIT License
-   - Repository: https://github.com/ow-mods/owml
-
-3. OpenTrack
-   - License: ISC License
-   - Repository: https://github.com/opentrack/opentrack
-   - Note: This mod interfaces with OpenTrack via UDP; OpenTrack is not included
-
-4. OuterWildsGameLibs
-   - Repository: https://github.com/ow-mods/OuterWildsGameLibs
-   - Provides publicized game assemblies for mod development

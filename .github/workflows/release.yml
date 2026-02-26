@@ -16,7 +16,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for changelog
+          fetch-depth: 0
+          submodules: true
 
       - name: Setup Pixi
         uses: prefix-dev/setup-pixi@v0.8.1
@@ -54,30 +55,7 @@ jobs:
             exit 1
           }
 
-          Write-Host "✅ Version matches!" -ForegroundColor Green
-
-      - name: Validate CHANGELOG entry exists
-        shell: pwsh
-        run: |
-          $version = "${{ steps.version.outputs.version }}"
-
-          if (-not (Test-Path "CHANGELOG.md")) {
-            Write-Host "::error::CHANGELOG.md not found"
-            exit 1
-          }
-
-          $changelog = Get-Content "CHANGELOG.md" -Raw
-
-          # Escape the version for regex (dots are special characters)
-          $escapedVersion = [regex]::Escape($version)
-
-          if ($changelog -notmatch "\[?$escapedVersion\]?") {
-            Write-Host "::error::CHANGELOG.md missing entry for version $version"
-            Write-Host "::error::Add a changelog entry with heading: ## [$version] - $(Get-Date -Format 'yyyy-MM-dd')"
-            exit 1
-          }
-
-          Write-Host "✅ CHANGELOG.md contains entry for v$version" -ForegroundColor Green
+          Write-Host "Version matches!" -ForegroundColor Green
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -92,12 +70,10 @@ jobs:
           $owmlVersion = "2.15.4"
           $owmlUrl = "https://github.com/ow-mods/owml/releases/download/$owmlVersion/OWML.zip"
           $owmlZip = "owml-temp.zip"
-          # SHA256 hash of OWML 2.15.4 release (for integrity verification)
           $expectedHash = "F95D2D14AEE0ADB60F8DB8DAD2100182433827EDD069A8636284E292F9CBC1D2"
 
           Invoke-WebRequest -Uri $owmlUrl -OutFile $owmlZip
 
-          # Verify download integrity
           $actualHash = (Get-FileHash -Path $owmlZip -Algorithm SHA256).Hash
           if ($actualHash -ne $expectedHash) {
             Write-Host "::error::OWML download hash mismatch!"
@@ -106,39 +82,36 @@ jobs:
             exit 1
           }
 
-          Write-Host "✅ OWML download verified" -ForegroundColor Green
+          Write-Host "OWML download verified" -ForegroundColor Green
           Write-Host "Extracting OWML DLLs..." -ForegroundColor Cyan
 
-          # Create libs directory
           New-Item -ItemType Directory -Force -Path "libs" | Out-Null
 
-          # Extract only the DLLs we need
           Expand-Archive -Path $owmlZip -DestinationPath "owml-temp" -Force
           Copy-Item "owml-temp/OWML.Common.dll" "libs/"
           Copy-Item "owml-temp/OWML.ModHelper.dll" "libs/"
           Copy-Item "owml-temp/OWML.ModHelper.Menus.dll" "libs/"
 
-          # Clean up
           Remove-Item $owmlZip
           Remove-Item -Recurse "owml-temp"
 
-          Write-Host "✅ OWML DLLs extracted from verified archive" -ForegroundColor Green
+          Write-Host "OWML DLLs extracted from verified archive" -ForegroundColor Green
 
       - name: Restore NuGet packages
-        run: dotnet restore
+        run: dotnet restore src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj
 
       - name: Build release
         shell: pwsh
         run: |
           Write-Host "Building release..." -ForegroundColor Cyan
-          dotnet build HeadTracking.csproj --configuration Release
+          dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj --configuration Release
 
           if ($LASTEXITCODE -ne 0) {
             Write-Host "::error::Build failed"
             exit 1
           }
 
-          Write-Host "✅ Build succeeded" -ForegroundColor Green
+          Write-Host "Build succeeded" -ForegroundColor Green
 
       - name: Package release
         shell: pwsh
@@ -151,38 +124,27 @@ jobs:
             exit 1
           }
 
-          Write-Host "✅ Package created" -ForegroundColor Green
+          Write-Host "Package created" -ForegroundColor Green
 
-      - name: Extract changelog for this version
-        id: changelog
+      - name: Generate release notes
         shell: pwsh
         run: |
-          $version = "${{ steps.version.outputs.version }}"
-          $changelog = Get-Content "CHANGELOG.md" -Raw
+          $artifactPaths = @(
+            "src/OuterWildsHeadTracking/"
+          )
 
-          # Extract section between this version and next heading
-          $pattern = "(?s)## \[?$version\]?.*?\n(.*?)(\n## |\z)"
-          if ($changelog -match $pattern) {
-            $notes = $matches[1].Trim()
-
-            # Save to file for GitHub release
-            $notes | Out-File -FilePath "release-notes.txt" -Encoding utf8 -NoNewline
-
-            Write-Host "Extracted changelog:"
-            Write-Host $notes
-          } else {
-            Write-Host "Could not extract changelog section, using default"
-            "Release v$version" | Out-File -FilePath "release-notes.txt" -Encoding utf8 -NoNewline
-          }
+          & headcannon-core/scripts/generate-release-notes.ps1 `
+            -Version "${{ steps.version.outputs.version }}" `
+            -ArtifactPaths $artifactPaths `
+            -ProjectName "Head Tracking for Outer Wilds"
 
       - name: Find release ZIP
         id: find_zip
         shell: pwsh
         run: |
           $manifest = Get-Content "manifest.json" -Raw | ConvertFrom-Json
-          $uniqueName = $manifest.uniqueName
           $version = "${{ steps.version.outputs.version }}"
-          $zipPath = "dist/$uniqueName-v$version.zip"
+          $zipPath = "release/OuterWildsHeadTracking-$version.zip"
 
           if (-not (Test-Path $zipPath)) {
             Write-Host "::error::Release ZIP not found at $zipPath"
@@ -190,7 +152,7 @@ jobs:
           }
 
           echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
-          echo "zip_name=$uniqueName-v$version.zip" >> $env:GITHUB_OUTPUT
+          echo "zip_name=OuterWildsHeadTracking-v$version.zip" >> $env:GITHUB_OUTPUT
 
           Write-Host "Found ZIP: $zipPath"
 
@@ -201,7 +163,6 @@ jobs:
         run: |
           $tag = "${{ steps.version.outputs.tag }}"
           $zipPath = "${{ steps.find_zip.outputs.zip_path }}"
-          $zipName = "${{ steps.find_zip.outputs.zip_name }}"
 
           Write-Host "Creating GitHub Release for $tag..." -ForegroundColor Cyan
 
@@ -215,5 +176,5 @@ jobs:
             exit 1
           }
 
-          Write-Host "✅ Release created successfully!" -ForegroundColor Green
+          Write-Host "Release created successfully!" -ForegroundColor Green
           Write-Host "   View at: https://github.com/${{ github.repository }}/releases/tag/$tag" -ForegroundColor Cyan

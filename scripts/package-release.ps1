@@ -1,64 +1,84 @@
 #!/usr/bin/env pwsh
-# Package release ZIP for distribution
-
+#Requires -Version 5.1
+# Package OuterWildsHeadTracking for release
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Write-Host "Packaging release..." -ForegroundColor Cyan
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
+$buildOutput = Join-Path $projectRoot "src\OuterWildsHeadTracking\bin\Release\net48"
+$releaseDir = Join-Path $projectRoot "release"
 
-# Read manifest.json to get version and unique name
-$manifest = Get-Content "manifest.json" -Raw | ConvertFrom-Json
+Write-Host "=== Outer Wilds Head Tracking - Package Release ===" -ForegroundColor Magenta
+Write-Host ""
+
+# Create release folder
+if (-not (Test-Path $releaseDir)) {
+    New-Item -ItemType Directory -Path $releaseDir | Out-Null
+}
+
+# Get version from manifest
+$manifest = Get-Content (Join-Path $projectRoot "manifest.json") | ConvertFrom-Json
 $version = $manifest.version
-$uniqueName = $manifest.uniqueName
+Write-Host "Version: $version" -ForegroundColor Cyan
+Write-Host ""
 
-$buildPath = "bin/Release/net48"
-$packageName = "$uniqueName-v$version"
-$packageDir = "dist/$packageName"
-$zipPath = "dist/$packageName.zip"
+$packageName = "OuterWildsHeadTracking-$version"
+$stagingDir = Join-Path $releaseDir $packageName
+$zipPath = Join-Path $releaseDir "$packageName.zip"
 
-# Clean and create dist directory
-if (Test-Path "dist") {
-    Remove-Item "dist" -Recurse -Force
-}
-New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+# Clean previous package
+if (Test-Path $stagingDir) { Remove-Item -Recurse -Force $stagingDir }
+if (Test-Path $zipPath) { Remove-Item -Force $zipPath }
 
-# Verify build output exists
-if (-not (Test-Path $buildPath)) {
-    Write-Host "❌ Build output not found at $buildPath" -ForegroundColor Red
-    Write-Host "Run 'pixi run build-release' first" -ForegroundColor Yellow
-    exit 1
-}
+# Create package folder
+New-Item -ItemType Directory -Path $stagingDir | Out-Null
 
-# Copy required files to package directory
-Write-Host "Copying files to $packageDir..." -ForegroundColor Yellow
+Write-Host "Copying release files..." -ForegroundColor Cyan
 
-$filesToCopy = @(
-    @{Path="$buildPath/HeadTracking.dll"; Required=$true},
-    @{Path="manifest.json"; Required=$true},
-    @{Path="default-config.json"; Required=$true},
-    @{Path="README.md"; Required=$false},
-    @{Path="LICENSE"; Required=$false}
-)
-
-foreach ($file in $filesToCopy) {
-    if (Test-Path $file.Path) {
-        Copy-Item $file.Path $packageDir -Force
-        Write-Host "  ✅ $(Split-Path $file.Path -Leaf)" -ForegroundColor Green
-    } elseif ($file.Required) {
-        Write-Host "  ❌ Missing required file: $($file.Path)" -ForegroundColor Red
+# Copy DLLs
+$dlls = @("OuterWildsHeadTracking.dll", "HeadCannon.Core.dll")
+foreach ($dll in $dlls) {
+    $source = Join-Path $buildOutput $dll
+    if (-not (Test-Path $source)) {
+        Write-Host "ERROR: $dll not found. Run 'pixi run build' first." -ForegroundColor Red
         exit 1
+    }
+    Copy-Item $source $stagingDir
+    Write-Host "  $dll" -ForegroundColor Green
+}
+
+# Copy manifest and config
+Copy-Item (Join-Path $projectRoot "manifest.json") $stagingDir
+Write-Host "  manifest.json" -ForegroundColor Green
+Copy-Item (Join-Path $projectRoot "default-config.json") $stagingDir
+Write-Host "  default-config.json" -ForegroundColor Green
+
+# Copy documentation
+$docFiles = @("README.md", "LICENSE")
+foreach ($doc in $docFiles) {
+    $docPath = Join-Path $projectRoot $doc
+    if (Test-Path $docPath) {
+        Copy-Item $docPath -Destination $stagingDir -Force
+        Write-Host "  $doc" -ForegroundColor Green
     } else {
-        Write-Host "  ⚠️  Optional file not found: $($file.Path)" -ForegroundColor Yellow
+        Write-Host "  WARNING: $doc not found" -ForegroundColor Yellow
     }
 }
 
-# Create ZIP archive
-Write-Host "Creating ZIP archive..." -ForegroundColor Yellow
-Compress-Archive -Path "$packageDir/*" -DestinationPath $zipPath -Force
+Write-Host ""
 
-# Get file size
+# Create zip
+Write-Host "Creating ZIP archive..." -ForegroundColor Cyan
+Compress-Archive -Path "$stagingDir\*" -DestinationPath $zipPath
+
+# Cleanup temp folder
+Remove-Item -Recurse -Force $stagingDir
+
 $zipSize = (Get-Item $zipPath).Length / 1KB
 Write-Host ""
-Write-Host "✅ Package created successfully!" -ForegroundColor Green
-Write-Host "   Location: $zipPath" -ForegroundColor Cyan
-Write-Host "   Size: $([math]::Round($zipSize, 2)) KB" -ForegroundColor Cyan
+Write-Host "=== Package Complete ===" -ForegroundColor Magenta
 Write-Host ""
+Write-Host "Release archive created:" -ForegroundColor Green
+Write-Host "  $zipPath" -ForegroundColor Cyan
+Write-Host ("  Size: {0:N1} KB" -f $zipSize) -ForegroundColor White

@@ -1,82 +1,57 @@
-# Deploy built mod to OWML Mods folder
-# Usage: deploy.ps1 <Configuration>
-# Example: deploy.ps1 Debug  or  deploy.ps1 Release
+# Deploy OuterWildsHeadTracking mod to OWML Mods folder
+$ErrorActionPreference = "Stop"
 
-param(
-    [Parameter(Mandatory=$true)]
-    [ValidateSet('Debug', 'Release')]
-    [string]$Configuration
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$projectRoot = Split-Path -Parent $scriptDir
+$buildOutput = Join-Path $projectRoot "src\OuterWildsHeadTracking\bin\Release\net48"
+$manifest = Get-Content (Join-Path $projectRoot "manifest.json") | ConvertFrom-Json
+$modName = $manifest.uniqueName
+
+# Import shared game detection module
+$modulePath = Join-Path $projectRoot "headcannon-core\powershell\GamePathDetection.psm1"
+Import-Module $modulePath -Force
+
+# Outer Wilds uses OWML mod manager
+$owmlPath = Find-OWMLPath
+if (-not $owmlPath) {
+    Write-Host "ERROR: OWML not found!" -ForegroundColor Red
+    Write-Host "Outer Wilds Mod Manager must be installed." -ForegroundColor Yellow
+    Write-Host "Expected path: $env:APPDATA\OuterWildsModManager\OWML" -ForegroundColor Gray
+    exit 1
+}
+
+$modsPath = Join-Path $owmlPath "Mods"
+$targetPath = Join-Path $modsPath $modName
+
+Write-Host "Deploying to $targetPath"
+
+# Create mod folder if needed
+if (-not (Test-Path $targetPath)) {
+    New-Item -ItemType Directory -Path $targetPath | Out-Null
+}
+
+# Copy built DLLs (including shared library)
+$dllsToCopy = @(
+    "OuterWildsHeadTracking.dll",
+    "HeadCannon.Core.dll"
 )
 
-# Detect OWML Mods path
-$modsPath = if (Test-Path (Join-Path $env:APPDATA 'OuterWildsModManager\OWML\Mods')) {
-    Join-Path $env:APPDATA 'OuterWildsModManager\OWML\Mods'
-} elseif (Test-Path 'C:/Program Files (x86)/Steam/steamapps/common/Outer Wilds/OWML/Mods') {
-    'C:/Program Files (x86)/Steam/steamapps/common/Outer Wilds/OWML/Mods'
-} elseif (Test-Path 'C:/Program Files/Epic Games/OuterWilds/OWML/Mods') {
-    'C:/Program Files/Epic Games/OuterWilds/OWML/Mods'
-} elseif ($env:OWML_MODS_PATH -and (Test-Path $env:OWML_MODS_PATH)) {
-    $env:OWML_MODS_PATH
-} else {
-    Write-Host 'ERROR: Could not find OWML Mods directory.' -ForegroundColor Red
-    Write-Host 'Please install OWML or set OWML_MODS_PATH environment variable' -ForegroundColor Yellow
-    Write-Host '' -ForegroundColor Yellow
-    Write-Host 'Expected locations:' -ForegroundColor Yellow
-    Write-Host '  - %APPDATA%\OuterWildsModManager\OWML\Mods' -ForegroundColor Yellow
-    Write-Host '  - C:/Program Files (x86)/Steam/steamapps/common/Outer Wilds/OWML/Mods' -ForegroundColor Yellow
-    Write-Host '  - C:/Program Files/Epic Games/OuterWilds/OWML/Mods' -ForegroundColor Yellow
-    Write-Host '  - Or set OWML_MODS_PATH environment variable' -ForegroundColor Yellow
-    exit 1
-}
-if (-not (Test-Path $modsPath)) {
-    Write-Host "ERROR: Mods directory not found at $modsPath" -ForegroundColor Red
-    exit 1
+foreach ($dll in $dllsToCopy) {
+    $source = Join-Path $buildOutput $dll
+    if (Test-Path $source) {
+        Copy-Item $source $targetPath -Force
+        Write-Host "  Copied $dll"
+    } else {
+        Write-Warning "  DLL not found: $source"
+    }
 }
 
-# Get mod name from manifest.json
-$manifestPath = 'manifest.json'
-if (-not (Test-Path $manifestPath)) {
-    Write-Host 'ERROR: manifest.json not found in current directory' -ForegroundColor Red
-    exit 1
-}
+# Copy manifest.json
+Copy-Item (Join-Path $projectRoot "manifest.json") $targetPath -Force
+Write-Host "  Copied manifest.json"
 
-$manifest = Get-Content $manifestPath | ConvertFrom-Json
-$modName = $manifest.uniqueName
-if (-not $modName) {
-    Write-Host 'ERROR: Could not read uniqueName from manifest.json' -ForegroundColor Red
-    exit 1
-}
+# Copy default-config.json
+Copy-Item (Join-Path $projectRoot "default-config.json") $targetPath -Force
+Write-Host "  Copied default-config.json"
 
-$targetPath = Join-Path $modsPath $modName
-$buildPath = "bin/$Configuration/net48"
-
-# Validate build output exists
-if (-not (Test-Path $buildPath)) {
-    Write-Host "ERROR: Build output not found at $buildPath" -ForegroundColor Red
-    Write-Host "Please run 'pixi run build' or 'pixi run build-release' first" -ForegroundColor Yellow
-    exit 1
-}
-
-# Create mod directory if it doesn't exist
-if (-not (Test-Path $targetPath)) {
-    New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
-    Write-Host "Created mod directory: $targetPath" -ForegroundColor Cyan
-}
-
-Write-Host "Deploying $modName ($Configuration) to OWML..." -ForegroundColor Green
-Write-Host "  Source: $buildPath" -ForegroundColor Gray
-Write-Host "  Target: $targetPath" -ForegroundColor Gray
-
-# Copy DLL and dependencies
-Copy-Item "$buildPath/*.dll" $targetPath -Force
-Copy-Item "$buildPath/*.pdb" $targetPath -Force -ErrorAction SilentlyContinue
-
-# Copy manifest and config
-Copy-Item 'manifest.json' $targetPath -Force
-Copy-Item 'default-config.json' $targetPath -Force -ErrorAction SilentlyContinue
-
-Write-Host '' -ForegroundColor Green
-Write-Host "[OK] Deployment complete!" -ForegroundColor Green
-Write-Host "Mod location: $targetPath" -ForegroundColor Cyan
-Write-Host '' -ForegroundColor Green
-Write-Host "Launch Outer Wilds through OWML to test your changes." -ForegroundColor Yellow
+Write-Host "Deploy complete!"

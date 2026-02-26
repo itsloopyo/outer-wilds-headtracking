@@ -1,67 +1,24 @@
 [workspace]
 name = "outer-wilds-head-tracking"
-description = "Head tracking mod for Outer Wilds using OpenTrack"
+version = "1.0.0"
+description = "Head tracking mod for Outer Wilds using HeadCannon shared library"
 channels = ["conda-forge"]
 platforms = ["win-64"]
 
 [tasks]
-# Setup OWML DLLs from OWML installation
-setup-libs = { cmd = """
-    powershell -ExecutionPolicy Bypass -File scripts/setup-libs.ps1
-""" }
+sync = "git submodule update --remote shared"
+restore = "dotnet restore src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj"
+build = { cmd = "dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj -c Release", depends-on = ["restore"] }
+deploy = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1", depends-on = ["build"] }
+vanilla = "powershell -ExecutionPolicy Bypass -File scripts/vanilla.ps1"
+package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["build"] }
+uninstall = "powershell -ExecutionPolicy Bypass -File scripts/uninstall.ps1"
+clean = "dotnet clean src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj"
 
-# Restore NuGet packages
-restore = { cmd = "dotnet restore", depends-on = ["setup-libs"] }
+# Validate release readiness
+validate-release = "powershell -ExecutionPolicy Bypass -File scripts/validate-release.ps1"
 
-# Build the project
-build = { cmd = "dotnet build HeadTracking.csproj --configuration Debug", depends-on = ["restore"] }
-
-# Build release version
-build-release = { cmd = "dotnet build HeadTracking.csproj --configuration Release", depends-on = ["restore"] }
-
-# Deploy to OWML mods folder
-deploy = { cmd = """
-    powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 Debug
-""", depends-on = ["build"] }
-
-# Deploy release version
-deploy-release = { cmd = """
-    powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 Release
-""", depends-on = ["build-release"] }
-
-# Clean build artifacts
-clean = { cmd = """
-    powershell -Command "if (Test-Path 'bin') { Remove-Item 'bin' -Recurse -Force }; if (Test-Path 'obj') { Remove-Item 'obj' -Recurse -Force }; Write-Host 'Build artifacts cleaned' -ForegroundColor Green"
-""" }
-
-# Full clean including libs
-clean-all = { cmd = """
-    powershell -Command "if (Test-Path 'bin') { Remove-Item 'bin' -Recurse -Force }; if (Test-Path 'obj') { Remove-Item 'obj' -Recurse -Force }; if (Test-Path 'libs/*.dll') { Remove-Item 'libs/*.dll' -Force }; Write-Host 'All build artifacts and libs cleaned' -ForegroundColor Green"
-""" }
-
-# Validate release readiness (run before tagging)
-validate-release = { cmd = """
-    powershell -ExecutionPolicy Bypass -File scripts/validate-release.ps1
-""" }
-
-# Package release ZIP (for local testing)
-package = { cmd = """
-    powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-""", depends-on = ["build-release"] }
-
-# Automated release workflow - updates version, CHANGELOG, builds, commits, tags, and pushes
-# Usage: pixi run release <version>
-# Example: pixi run release 1.0.1
-release = { cmd = """
-    powershell -ExecutionPolicy Bypass -File scripts/release.ps1
-""" }
-
-# Revert a release - deletes tags and optionally reverts version bump commit
-# Usage: pixi run unrelease <version>
-# Example: pixi run unrelease 1.0.1
-unrelease = { cmd = """
-    powershell -ExecutionPolicy Bypass -File scripts/unrelease.ps1
-""" }
-
-[dependencies]
-# No pixi dependencies needed - using system dotnet
+# Full release workflow - creates tag and pushes to trigger CI release
+# Usage: pixi run release [version]
+# Example: pixi run release 1.0.0
+release = "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
