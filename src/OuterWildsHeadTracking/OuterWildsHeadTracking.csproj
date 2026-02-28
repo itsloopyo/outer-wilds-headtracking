@@ -9,9 +9,9 @@
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
-  <!-- Reference shared HeadCannon.Core library (via git submodule at shared/) -->
+  <!-- Reference shared CameraUnlock.Core library (via git submodule at shared/) -->
   <ItemGroup>
-    <ProjectReference Include="..\..\headcannon-core\csharp\src\HeadCannon.Core\HeadCannon.Core.csproj" />
+    <ProjectReference Include="..\..\cameraunlock-core\csharp\src\CameraUnlock.Core\CameraUnlock.Core.csproj" />
   </ItemGroup>
 
   <!-- NuGet Package References -->

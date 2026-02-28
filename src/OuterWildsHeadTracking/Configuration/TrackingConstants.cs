@@ -2,7 +2,7 @@ namespace OuterWildsHeadTracking.Configuration
 {
     /// <summary>
     /// Constants for head tracking configuration.
-    /// Note: Default UDP port is defined in HeadCannon.Core.Protocol.OpenTrackReceiver.DefaultPort
+    /// Note: Default UDP port is defined in CameraUnlock.Core.Protocol.OpenTrackReceiver.DefaultPort
     /// </summary>
     public static class TrackingConstants
     {

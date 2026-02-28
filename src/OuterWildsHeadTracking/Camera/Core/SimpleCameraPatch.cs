@@ -1,7 +1,7 @@
 extern alias UnityCoreModule;
 using System;
 using HarmonyLib;
-using HeadCannon.Core.Math;
+using CameraUnlock.Core.Math;
 using OuterWildsHeadTracking.Configuration;
 using OuterWildsHeadTracking.Tracking;
 using OuterWildsHeadTracking.Camera.Utilities;

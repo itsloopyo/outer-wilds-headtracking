@@ -3,7 +3,7 @@
 
 ## [1.0.2] - 2026-02-26
 
-- Restructure mod around shared headcannon-core library
+- Restructure mod around shared cameraunlock-core library
 
 All notable changes to this project will be documented in this file.
 

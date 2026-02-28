@@ -18,10 +18,10 @@
 ### Option 2: Manual Installation
 
 1. Download the latest release zip from the releases page
-2. Extract to: `%APPDATA%\OuterWildsModManager\OWML\Mods\HeadCannon.OuterWildsHeadTracking\`
+2. Extract to: `%APPDATA%\OuterWildsModManager\OWML\Mods\itsloopyo.OuterWildsHeadTracking\`
 3. The folder should contain:
    - `OuterWildsHeadTracking.dll`
-   - `HeadCannon.Core.dll`
+   - `CameraUnlock.Core.dll`
    - `manifest.json`
    - `default-config.json`
 
@@ -122,4 +122,4 @@ If tracking doesn't work, you may need to allow the port through Windows Firewal
 Click the uninstall button next to the mod in OWML.
 
 ### Manual
-Delete the folder: `%APPDATA%\OuterWildsModManager\OWML\Mods\HeadCannon.OuterWildsHeadTracking\`
+Delete the folder: `%APPDATA%\OuterWildsModManager\OWML\Mods\itsloopyo.OuterWildsHeadTracking\`

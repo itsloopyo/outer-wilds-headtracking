@@ -8,7 +8,7 @@ $manifest = Get-Content (Join-Path $projectRoot "manifest.json") | ConvertFrom-J
 $modName = $manifest.uniqueName
 
 # Import shared game detection module
-$modulePath = Join-Path $projectRoot "headcannon-core\powershell\GamePathDetection.psm1"
+$modulePath = Join-Path $projectRoot "cameraunlock-core\powershell\GamePathDetection.psm1"
 Import-Module $modulePath -Force
 
 # Outer Wilds uses OWML mod manager
@@ -33,7 +33,7 @@ if (-not (Test-Path $targetPath)) {
 # Copy built DLLs (including shared library)
 $dllsToCopy = @(
     "OuterWildsHeadTracking.dll",
-    "HeadCannon.Core.dll"
+    "CameraUnlock.Core.dll"
 )
 
 foreach ($dll in $dllsToCopy) {

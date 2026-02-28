@@ -7,7 +7,7 @@ namespace OuterWildsHeadTracking.Camera.Utilities
 {
     /// <summary>
     /// Utility for temporarily modifying camera rotation and safely restoring it.
-    /// This follows the same pattern as HeadCannon.Core.Unity.Tracking.TemporaryRotationScope.
+    /// This follows the same pattern as CameraUnlock.Core.Unity.Tracking.TemporaryRotationScope.
     ///
     /// Note: Cannot use TemporaryRotationScope directly due to Unity extern alias requirements
     /// in Outer Wilds (UnityCoreModule::UnityEngine vs standard UnityEngine).

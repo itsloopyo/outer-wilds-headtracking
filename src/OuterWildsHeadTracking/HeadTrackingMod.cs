@@ -2,7 +2,7 @@ extern alias OWMLCommon;
 extern alias OWMLCore;
 extern alias UnityCoreModule;
 using HarmonyLib;
-using HeadCannon.Core.Protocol;
+using CameraUnlock.Core.Protocol;
 using OuterWildsHeadTracking.Configuration;
 using OuterWildsHeadTracking.Tracking;
 using OuterWildsHeadTracking.Utilities;
@@ -51,7 +51,7 @@ namespace OuterWildsHeadTracking
 
             try
             {
-                _harmony = new Harmony("HeadCannon.OuterWildsHeadTracking");
+                _harmony = new Harmony("itsloopyo.OuterWildsHeadTracking");
                 _harmony.PatchAll(Assembly.GetExecutingAssembly());
 
                 // Apply manual patches for types that aren't directly accessible

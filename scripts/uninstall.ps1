@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 
 $owmlPath = Join-Path $env:APPDATA "OuterWildsModManager\OWML"
 $modsPath = Join-Path $owmlPath "Mods"
-$modName = "HeadCannon.OuterWildsHeadTracking"
+$modName = "itsloopyo.OuterWildsHeadTracking"
 $targetPath = Join-Path $modsPath $modName
 
 if (-not (Test-Path $targetPath)) {

@@ -133,7 +133,7 @@ jobs:
             "src/OuterWildsHeadTracking/"
           )
 
-          & headcannon-core/scripts/generate-release-notes.ps1 `
+          & cameraunlock-core/scripts/generate-release-notes.ps1 `
             -Version "${{ steps.version.outputs.version }}" `
             -ArtifactPaths $artifactPaths `
             -ProjectName "Head Tracking for Outer Wilds"

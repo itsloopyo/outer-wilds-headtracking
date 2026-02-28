@@ -1,5 +1,7 @@
 # Outer Wilds Head Tracking
 
+![Mod GIF](assets/readme-clip.gif)
+
 An **unofficial** head tracking mod for Outer Wilds that lets you look around naturally using your phone or dedicated head tracker.
 
 ## Features
@@ -72,7 +74,7 @@ pixi run deploy
 pixi run package
 ```
 
-The mod depends on the shared `HeadCannon.Core` library (included as a git submodule in the `shared/` directory).
+The mod depends on the shared `CameraUnlock.Core` library (included as a git submodule in the `shared/` directory).
 
 ## Project Structure
 

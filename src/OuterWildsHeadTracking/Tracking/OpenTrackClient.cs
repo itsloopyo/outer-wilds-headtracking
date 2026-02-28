@@ -1,26 +1,26 @@
 extern alias UnityCoreModule;
 extern alias OWMLCommon;
 using System;
-using HeadCannon.Core.Data;
-using HeadCannon.Core.Processing;
-using HeadCannon.Core.Protocol;
+using CameraUnlock.Core.Data;
+using CameraUnlock.Core.Processing;
+using CameraUnlock.Core.Protocol;
 using OuterWildsHeadTracking.Configuration;
 
 namespace OuterWildsHeadTracking.Tracking
 {
     /// <summary>
-    /// Wrapper around HeadCannon.Core.Protocol.OpenTrackReceiver and TrackingProcessor.
+    /// Wrapper around CameraUnlock.Core.Protocol.OpenTrackReceiver and TrackingProcessor.
     /// Provides the same API that the Outer Wilds mod expects while delegating
     /// to the shared library for UDP reception, processing, and lock-free data access.
     /// </summary>
     public class OpenTrackClient : IDisposable
     {
-        private HeadCannon.Core.Protocol.OpenTrackReceiver? _receiver;
+        private CameraUnlock.Core.Protocol.OpenTrackReceiver? _receiver;
         private TrackingProcessor? _processor;
         private readonly int _port;
         private bool _loggedConnection;
 
-        public OpenTrackClient() : this(HeadCannon.Core.Protocol.OpenTrackReceiver.DefaultPort)
+        public OpenTrackClient() : this(CameraUnlock.Core.Protocol.OpenTrackReceiver.DefaultPort)
         {
         }
 
@@ -31,7 +31,7 @@ namespace OuterWildsHeadTracking.Tracking
 
         public bool Initialize()
         {
-            _receiver = new HeadCannon.Core.Protocol.OpenTrackReceiver();
+            _receiver = new CameraUnlock.Core.Protocol.OpenTrackReceiver();
             if (!_receiver.Start(_port))
             {
                 return false;

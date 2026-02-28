@@ -37,7 +37,7 @@ New-Item -ItemType Directory -Path $stagingDir | Out-Null
 Write-Host "Copying release files..." -ForegroundColor Cyan
 
 # Copy DLLs
-$dlls = @("OuterWildsHeadTracking.dll", "HeadCannon.Core.dll")
+$dlls = @("OuterWildsHeadTracking.dll", "CameraUnlock.Core.dll")
 foreach ($dll in $dlls) {
     $source = Join-Path $buildOutput $dll
     if (-not (Test-Path $source)) {

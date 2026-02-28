@@ -32,7 +32,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Split-Path -Parent $scriptDir
 $manifestPath = Join-Path $projectDir "manifest.json"
 
-Import-Module (Join-Path $projectDir "headcannon-core\powershell\ReleaseWorkflow.psm1") -Force
+Import-Module (Join-Path $projectDir "cameraunlock-core\powershell\ReleaseWorkflow.psm1") -Force
 
 # Function to get current version from manifest.json
 function Get-CurrentVersion {
@@ -140,4 +140,4 @@ Write-Host "  - Build the release" -ForegroundColor White
 Write-Host "  - Create GitHub release with artifacts" -ForegroundColor White
 Write-Host ""
 Write-Host "Watch progress at:" -ForegroundColor Yellow
-Write-Host "  https://github.com/HeadCannonMods/outer-wilds-headtracking/actions" -ForegroundColor Cyan
+Write-Host "  https://github.com/itsloopyo/outer-wilds-headtracking/actions" -ForegroundColor Cyan

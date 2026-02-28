@@ -1,12 +1,20 @@
 [workspace]
 name = "outer-wilds-head-tracking"
 version = "1.0.0"
-description = "Head tracking mod for Outer Wilds using HeadCannon shared library"
+description = "Head tracking mod for Outer Wilds using CameraUnlock shared library"
 channels = ["conda-forge"]
-platforms = ["win-64"]
+platforms = ["win-64", "osx-arm64", "linux-64"]
 
 [tasks]
 sync = "git submodule update --remote shared"
+
+# Full release workflow - creates tag and pushes to trigger CI release
+# Usage: pixi run release [version]
+# Example: pixi run release 1.0.0
+release = "bash scripts/release.sh"
+
+# Windows-only tasks (build, deploy, local testing)
+[target.win-64.tasks]
 restore = "dotnet restore src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj"
 build = { cmd = "dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj -c Release", depends-on = ["restore"] }
 deploy = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1", depends-on = ["build"] }
@@ -14,11 +22,5 @@ vanilla = "powershell -ExecutionPolicy Bypass -File scripts/vanilla.ps1"
 package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["build"] }
 uninstall = "powershell -ExecutionPolicy Bypass -File scripts/uninstall.ps1"
 clean = "dotnet clean src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj"
-
-# Validate release readiness
 validate-release = "powershell -ExecutionPolicy Bypass -File scripts/validate-release.ps1"
-
-# Full release workflow - creates tag and pushes to trigger CI release
-# Usage: pixi run release [version]
-# Example: pixi run release 1.0.0
 release = "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"

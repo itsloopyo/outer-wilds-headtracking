@@ -6,7 +6,7 @@ namespace OuterWildsHeadTracking.Camera.Utilities
 {
     /// <summary>
     /// Utility class for composing camera rotations with head tracking.
-    /// This mirrors HeadCannon.Core.Unity.Tracking.CameraRotationComposer but uses
+    /// This mirrors CameraUnlock.Core.Unity.Tracking.CameraRotationComposer but uses
     /// Outer Wilds' extern-aliased Unity types for compatibility.
     /// </summary>
     public static class CameraRotationComposer
