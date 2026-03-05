@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3] - 2026-03-05
+
+### Other
+
+- Rename headcannon-core to cameraunlock-core and add cross-platform release support
+- Add 6DOF positional tracking with neck model simulation
+
 
 ## [1.0.2] - 2026-02-26
 
@@ -17,4 +24,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Head tracking support via OpenTrack UDP protocol
 - Configurable sensitivity and smoothing
 - In-game toggle and recenter controls
-
