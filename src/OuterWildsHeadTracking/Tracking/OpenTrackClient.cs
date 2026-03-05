@@ -2,6 +2,7 @@ extern alias UnityCoreModule;
 extern alias OWMLCommon;
 using System;
 using CameraUnlock.Core.Data;
+using CameraUnlock.Core.Math;
 using CameraUnlock.Core.Processing;
 using CameraUnlock.Core.Protocol;
 using OuterWildsHeadTracking.Configuration;
@@ -17,6 +18,8 @@ namespace OuterWildsHeadTracking.Tracking
     {
         private CameraUnlock.Core.Protocol.OpenTrackReceiver? _receiver;
         private TrackingProcessor? _processor;
+        private PositionProcessor? _positionProcessor;
+        private PositionInterpolator? _positionInterpolator;
         private readonly int _port;
         private bool _loggedConnection;
 
@@ -43,6 +46,9 @@ namespace OuterWildsHeadTracking.Tracking
                 SmoothingFactor = 0f,
                 Deadzone = DeadzoneSettings.None
             };
+
+            _positionProcessor = new PositionProcessor();
+            _positionInterpolator = new PositionInterpolator();
             UpdateProcessorSettings();
 
             return true;
@@ -66,6 +72,25 @@ namespace OuterWildsHeadTracking.Tracking
                 invertPitch: true,  // Pitch needs inversion for Unity
                 invertRoll: false
             );
+
+            if (_positionProcessor != null)
+            {
+                _positionProcessor.Settings = new PositionSettings(
+                    HeadTrackingMod.PositionSensitivityX,
+                    HeadTrackingMod.PositionSensitivityY,
+                    HeadTrackingMod.PositionSensitivityZ,
+                    HeadTrackingMod.PositionLimitX,
+                    HeadTrackingMod.PositionLimitY,
+                    HeadTrackingMod.PositionLimitZ,
+                    HeadTrackingMod.PositionSmoothing,
+                    invertX: true, invertY: false, invertZ: true
+                );
+                _positionProcessor.NeckModelSettings = new NeckModelSettings(
+                    HeadTrackingMod.NeckModelEnabled,
+                    HeadTrackingMod.NeckModelHeight,
+                    HeadTrackingMod.NeckModelForward
+                );
+            }
         }
 
         /// <summary>
@@ -92,11 +117,51 @@ namespace OuterWildsHeadTracking.Tracking
             }
         }
 
+        /// <summary>
+        /// Processes position data through the position pipeline.
+        /// </summary>
+        /// <param name="headRotQ">Head rotation quaternion (for neck model).</param>
+        /// <param name="deltaTime">Frame delta time.</param>
+        /// <returns>Processed position offset in meters, or Vec3.Zero.</returns>
+        public Vec3 GetProcessedPosition(Quat4 headRotQ, float deltaTime)
+        {
+            if (_receiver == null || _positionProcessor == null || _positionInterpolator == null
+                || !_receiver.IsReceiving)
+            {
+                return Vec3.Zero;
+            }
+
+            var rawPos = _receiver.GetLatestPosition();
+            var interpolatedPos = _positionInterpolator.Update(rawPos, deltaTime);
+            return _positionProcessor.Process(interpolatedPos, headRotQ, IsRemoteSource, deltaTime);
+        }
+
+        /// <summary>
+        /// Sets the current position as the center offset.
+        /// </summary>
+        public void RecenterPosition()
+        {
+            if (_receiver == null || _positionProcessor == null) return;
+            _positionProcessor.SetCenter(_receiver.GetLatestPosition());
+            _positionInterpolator?.Reset();
+        }
+
+        /// <summary>
+        /// Resets position processing state.
+        /// </summary>
+        public void ResetPositionProcessor()
+        {
+            _positionProcessor?.Reset();
+            _positionInterpolator?.Reset();
+        }
+
         public void Shutdown()
         {
             _receiver?.Dispose();
             _receiver = null;
             _processor = null;
+            _positionProcessor = null;
+            _positionInterpolator = null;
             _loggedConnection = false;
         }
 
@@ -138,6 +203,7 @@ namespace OuterWildsHeadTracking.Tracking
             if (_processor == null) return;
             var pose = new TrackingPose(rawAngles.Yaw, rawAngles.Pitch, rawAngles.Roll, 0);
             _processor.RecenterTo(pose);
+            RecenterPosition();
         }
 
         /// <summary>
@@ -146,6 +212,7 @@ namespace OuterWildsHeadTracking.Tracking
         public void ResetProcessor()
         {
             _processor?.Reset();
+            ResetPositionProcessor();
         }
 
         public struct ProcessedRotation

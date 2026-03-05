@@ -6,6 +6,17 @@
     "pitchSensitivity": 1.0,
     "rollSensitivity": 1.0,
     "smoothing": 0.0,
-    "adaptiveSmoothing": true
+    "adaptiveSmoothing": true,
+    "positionEnabled": true,
+    "positionSensitivityX": 4.0,
+    "positionSensitivityY": 4.0,
+    "positionSensitivityZ": 4.0,
+    "positionLimitX": 0.30,
+    "positionLimitY": 0.20,
+    "positionLimitZ": 0.40,
+    "positionSmoothing": 0.15,
+    "neckModelEnabled": true,
+    "neckModelHeight": 0.10,
+    "neckModelForward": 0.08
   }
 }

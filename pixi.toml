@@ -17,10 +17,11 @@ release = "bash scripts/release.sh"
 [target.win-64.tasks]
 restore = "dotnet restore src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj"
 build = { cmd = "dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj -c Release", depends-on = ["restore"] }
-deploy = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1", depends-on = ["build"] }
+install = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1", depends-on = ["build"] }
 vanilla = "powershell -ExecutionPolicy Bypass -File scripts/vanilla.ps1"
 package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["build"] }
 uninstall = "powershell -ExecutionPolicy Bypass -File scripts/uninstall.ps1"
 clean = "dotnet clean src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj"
 validate-release = "powershell -ExecutionPolicy Bypass -File scripts/validate-release.ps1"
 release = "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"
+show-changelog = "powershell -ExecutionPolicy Bypass -File scripts/show-changelog.ps1"

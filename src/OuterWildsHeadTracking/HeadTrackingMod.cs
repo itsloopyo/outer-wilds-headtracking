@@ -32,6 +32,21 @@ namespace OuterWildsHeadTracking
         public static float Smoothing = 0.0f;
         public static bool AdaptiveSmoothing = true;
 
+        // Position settings
+        public static bool PositionEnabled = true;
+        public static float PositionSensitivityX = 4.0f;
+        public static float PositionSensitivityY = 4.0f;
+        public static float PositionSensitivityZ = 4.0f;
+        public static float PositionLimitX = 0.30f;
+        public static float PositionLimitY = 0.20f;
+        public static float PositionLimitZ = 0.40f;
+        public static float PositionSmoothing = 0.15f;
+
+        // Neck model settings
+        public static bool NeckModelEnabled = true;
+        public static float NeckModelHeight = 0.10f;
+        public static float NeckModelForward = 0.08f;
+
         public new IModHelper? ModHelper { get; private set; }
 
         private void Awake()
@@ -73,7 +88,7 @@ namespace OuterWildsHeadTracking
 
                 if (_trackingClient.Initialize())
                 {
-                    ModHelper.Console.WriteLine($"[HeadTracking] Initialized (Home=recenter, End=toggle, smoothing={Smoothing})", MessageType.Info);
+                    ModHelper.Console.WriteLine($"[HeadTracking] Initialized (Home=recenter, End=toggle, PgUp=position, smoothing={Smoothing})", MessageType.Info);
                 }
                 else
                 {
@@ -114,6 +129,15 @@ namespace OuterWildsHeadTracking
                 if (keyboard.endKey.wasPressedThisFrame)
                 {
                     _trackingEnabled = !_trackingEnabled;
+                }
+
+                // PageUp - Toggle positional tracking on/off
+                if (keyboard.pageUpKey.wasPressedThisFrame)
+                {
+                    PositionEnabled = !PositionEnabled;
+                    ModHelper?.Console.WriteLine(
+                        $"[HeadTracking] Position tracking {(PositionEnabled ? "ON" : "OFF")}",
+                        MessageType.Info);
                 }
             }
             catch (InvalidOperationException)
@@ -208,6 +232,25 @@ namespace OuterWildsHeadTracking
             if (PitchSensitivity <= 0) PitchSensitivity = 1.0f;
             if (RollSensitivity <= 0) RollSensitivity = 1.0f;
             Smoothing = UnityCoreModule::UnityEngine.Mathf.Clamp01(Smoothing);
+
+            // Position settings
+            PositionEnabled = ModHelper.Config.GetSettingsValue<bool>("positionEnabled");
+            PositionSensitivityX = (float)ModHelper.Config.GetSettingsValue<double>("positionSensitivityX");
+            PositionSensitivityY = (float)ModHelper.Config.GetSettingsValue<double>("positionSensitivityY");
+            PositionSensitivityZ = (float)ModHelper.Config.GetSettingsValue<double>("positionSensitivityZ");
+            PositionLimitX = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitX");
+            PositionLimitY = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitY");
+            PositionLimitZ = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitZ");
+            PositionSmoothing = (float)ModHelper.Config.GetSettingsValue<double>("positionSmoothing");
+            if (PositionSensitivityX <= 0) PositionSensitivityX = 2.0f;
+            if (PositionSensitivityY <= 0) PositionSensitivityY = 2.0f;
+            if (PositionSensitivityZ <= 0) PositionSensitivityZ = 2.0f;
+            PositionSmoothing = UnityCoreModule::UnityEngine.Mathf.Clamp01(PositionSmoothing);
+
+            // Neck model settings
+            NeckModelEnabled = ModHelper.Config.GetSettingsValue<bool>("neckModelEnabled");
+            NeckModelHeight = (float)ModHelper.Config.GetSettingsValue<double>("neckModelHeight");
+            NeckModelForward = (float)ModHelper.Config.GetSettingsValue<double>("neckModelForward");
 
             // Update processor settings when config changes
             _trackingClient?.UpdateProcessorSettings();

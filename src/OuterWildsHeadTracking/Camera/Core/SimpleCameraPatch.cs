@@ -1,6 +1,7 @@
 extern alias UnityCoreModule;
 using System;
 using HarmonyLib;
+using CameraUnlock.Core.Data;
 using CameraUnlock.Core.Math;
 using OuterWildsHeadTracking.Configuration;
 using OuterWildsHeadTracking.Tracking;
@@ -45,11 +46,50 @@ namespace OuterWildsHeadTracking.Camera.Core
         private static bool _wasMenuPaused = false;
         private static Quaternion _smoothedHeadTrackingRotation = Quaternion.identity;
 
+        // Position tracking state
+        private static Vec3 _lastPositionOffset = Vec3.Zero;
+        private static bool _positionOffsetApplied = false;
+
         public static void RecenterTracking()
         {
             _centerSet = false;
             _smoothedHeadTrackingRotation = Quaternion.identity;
+            _lastPositionOffset = Vec3.Zero;
+            _positionOffsetApplied = false;
             HeadTrackingMod.Instance?.GetTrackingClient()?.ResetProcessor();
+        }
+
+        /// <summary>
+        /// Remove our position offset before the game's UpdateCamera lerps localPosition,
+        /// so the lerp operates on the game's clean position, not our offset position.
+        /// </summary>
+        [HarmonyPatch("FixedUpdate")]
+        [HarmonyPrefix]
+        public static void FixedUpdate_Prefix(PlayerCameraController __instance)
+        {
+            if (!_positionOffsetApplied) return;
+
+            var t = __instance.transform;
+            var pos = t.localPosition;
+            t.localPosition = pos - new Vector3(
+                _lastPositionOffset.X, _lastPositionOffset.Y, _lastPositionOffset.Z);
+            _positionOffsetApplied = false;
+        }
+
+        /// <summary>
+        /// Also remove offset before Update, since Update calls UpdateCamera when reading-paused.
+        /// </summary>
+        [HarmonyPatch("Update")]
+        [HarmonyPrefix]
+        public static void Update_Prefix(PlayerCameraController __instance)
+        {
+            if (!_positionOffsetApplied) return;
+
+            var t = __instance.transform;
+            var pos = t.localPosition;
+            t.localPosition = pos - new Vector3(
+                _lastPositionOffset.X, _lastPositionOffset.Y, _lastPositionOffset.Z);
+            _positionOffsetApplied = false;
         }
 
         [HarmonyPatch("Update")]
@@ -294,6 +334,25 @@ namespace OuterWildsHeadTracking.Camera.Core
 
                 _lastHeadTrackingRotation = headTrackingRotation;
                 cameraTransform.localRotation = gameWantedRotation * headTrackingRotation;
+
+                // Position tracking
+                if (HeadTrackingMod.PositionEnabled && trackingClient != null)
+                {
+                    // Build rotation quaternion matching the tracking rotation for neck model
+                    var headRotQ = QuaternionUtils.FromYawPitchRoll(
+                        yaw * headTrackingInfluence,
+                        pitch * headTrackingInfluence,
+                        roll * headTrackingInfluence);
+
+                    Vec3 posOffset = trackingClient.GetProcessedPosition(headRotQ, deltaTime);
+                    Vec3 scaledPos = posOffset * headTrackingInfluence;
+                    _lastPositionOffset = scaledPos;
+
+                    var gamePos = cameraTransform.localPosition;
+                    cameraTransform.localPosition = gamePos + new Vector3(
+                        scaledPos.X, scaledPos.Y, scaledPos.Z);
+                    _positionOffsetApplied = true;
+                }
             }
             else
             {

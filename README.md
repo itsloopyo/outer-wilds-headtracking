@@ -7,7 +7,8 @@ An **unofficial** head tracking mod for Outer Wilds that lets you look around na
 ## Features
 
 - **Decoupled look + aim**: Look around freely with your head while your aim stays independent
-- **3DOF head tracking**: Yaw, pitch, and roll via OpenTrack UDP protocol
+- **6DOF head tracking**: Yaw, pitch, roll rotation plus positional tracking (lean in/out/side-to-side) via OpenTrack UDP protocol
+- **Neck model**: Simulates realistic head rotation around the neck pivot, so tilting your head moves your eyes along a natural arc
 - **Adaptive smoothing**: Automatically adjusts smoothing for WiFi/remote connections to reduce jitter
 - **Smart auto-disable**: Tracking automatically pauses during model ship piloting, signalscope zoom, and pause menu
 - **Full game integration**: Flashlight follows your gaze, Nomai Translator targets where you look, quantum objects respect head-tracked view direction
@@ -22,7 +23,7 @@ An **unofficial** head tracking mod for Outer Wilds that lets you look around na
 
 1. Install [pixi](https://pixi.sh)
 2. Clone this repository
-3. Run `pixi run deploy`
+3. Run `pixi run install`
 4. Configure OpenTrack to output UDP data to `127.0.0.1:4242`
 5. Launch the game
 
@@ -42,6 +43,7 @@ The mod automatically detects remote connections (e.g., phone over WiFi) and app
 |-----|--------|
 | **Home** | Recenter tracking (set current head position as neutral) |
 | **End** | Toggle head tracking on/off |
+| **Page Up** | Toggle positional tracking on/off |
 
 ## Configuration
 
@@ -55,6 +57,17 @@ Settings are available in the OWML Mod Manager or in-game mod menu. The mod crea
 | `rollSensitivity` | 1.0 | Head tilt sensitivity |
 | `smoothing` | 0.0 | Manual smoothing (0 = none, 1 = max) |
 | `adaptiveSmoothing` | true | Auto-apply smoothing for remote/WiFi connections |
+| `positionEnabled` | true | Enable positional tracking (lean in/out/side-to-side) |
+| `positionSensitivityX` | 4.0 | Lateral position multiplier |
+| `positionSensitivityY` | 4.0 | Vertical position multiplier |
+| `positionSensitivityZ` | 4.0 | Depth position multiplier |
+| `positionLimitX` | 0.30 | Max lateral displacement (meters) |
+| `positionLimitY` | 0.20 | Max vertical displacement (meters) |
+| `positionLimitZ` | 0.40 | Max depth displacement (meters) |
+| `positionSmoothing` | 0.15 | Position smoothing factor |
+| `neckModelEnabled` | true | Simulate head rotating around neck pivot |
+| `neckModelHeight` | 0.10 | Neck-to-eyes vertical distance (meters) |
+| `neckModelForward` | 0.08 | Neck-to-eyes forward distance (meters) |
 
 ## Building from Source
 
@@ -67,8 +80,8 @@ pixi run restore
 # Build the mod
 pixi run build
 
-# Deploy to OWML Mods folder
-pixi run deploy
+# Build and install to OWML Mods folder
+pixi run install
 
 # Create release package
 pixi run package
