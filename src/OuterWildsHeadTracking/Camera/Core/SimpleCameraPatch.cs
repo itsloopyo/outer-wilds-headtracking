@@ -43,7 +43,6 @@ namespace OuterWildsHeadTracking.Camera.Core
         private static float _cachedRollOffset = 0f;
         private static float _cachedHeadTrackingInfluence = 1f;
         private static int _lastRotationCalcFrame = -1;
-        private static bool _wasMenuPaused = false;
         private static Quaternion _smoothedHeadTrackingRotation = Quaternion.identity;
 
         // Position tracking state
@@ -135,7 +134,6 @@ namespace OuterWildsHeadTracking.Camera.Core
 
             if (OWTime.IsPaused(OWTime.PauseType.Menu))
             {
-                _wasMenuPaused = true;
                 _lastHeadTrackingRotation = Quaternion.identity;
                 return;
             }
@@ -212,16 +210,6 @@ namespace OuterWildsHeadTracking.Camera.Core
 
             ReticleUpdater.Create();
             UnityCoreModule::UnityEngine.Camera.onPreRender += OnCameraPreRender;
-            GlobalMessenger.AddListener("GameUnpaused", OnGameUnpaused);
-        }
-
-        private static void OnGameUnpaused()
-        {
-            if (_wasMenuPaused)
-            {
-                _centerSet = false;
-                _wasMenuPaused = false;
-            }
         }
 
         private static void OnCameraPreRender(UnityCoreModule::UnityEngine.Camera cam)
