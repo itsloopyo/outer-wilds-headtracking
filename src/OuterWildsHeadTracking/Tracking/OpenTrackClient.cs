@@ -82,6 +82,7 @@ namespace OuterWildsHeadTracking.Tracking
                     HeadTrackingMod.PositionLimitX,
                     HeadTrackingMod.PositionLimitY,
                     HeadTrackingMod.PositionLimitZ,
+                    HeadTrackingMod.PositionLimitZBack,
                     HeadTrackingMod.PositionSmoothing,
                     invertX: true, invertY: false, invertZ: true
                 );

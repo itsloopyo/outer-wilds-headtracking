@@ -40,6 +40,7 @@ namespace OuterWildsHeadTracking
         public static float PositionLimitX = 0.30f;
         public static float PositionLimitY = 0.20f;
         public static float PositionLimitZ = 0.40f;
+        public static float PositionLimitZBack = 0.10f;
         public static float PositionSmoothing = 0.15f;
 
         // Neck model settings
@@ -241,6 +242,7 @@ namespace OuterWildsHeadTracking
             PositionLimitX = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitX");
             PositionLimitY = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitY");
             PositionLimitZ = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitZ");
+            PositionLimitZBack = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitZBack");
             PositionSmoothing = (float)ModHelper.Config.GetSettingsValue<double>("positionSmoothing");
             if (PositionSensitivityX <= 0) PositionSensitivityX = 2.0f;
             if (PositionSensitivityY <= 0) PositionSensitivityY = 2.0f;

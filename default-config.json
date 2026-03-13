@@ -14,6 +14,7 @@
     "positionLimitX": 0.30,
     "positionLimitY": 0.20,
     "positionLimitZ": 0.40,
+    "positionLimitZBack": 0.10,
     "positionSmoothing": 0.15,
     "neckModelEnabled": true,
     "neckModelHeight": 0.10,
