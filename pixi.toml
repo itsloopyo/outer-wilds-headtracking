@@ -6,7 +6,7 @@ channels = ["conda-forge"]
 platforms = ["win-64", "osx-arm64", "linux-64"]
 
 [tasks]
-sync = "git submodule update --remote shared"
+sync = "git submodule update --remote cameraunlock-core"
 
 # Full release workflow - creates tag and pushes to trigger CI release
 # Usage: pixi run release [version]

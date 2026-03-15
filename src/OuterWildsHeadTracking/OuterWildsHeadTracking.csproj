@@ -39,6 +39,11 @@
       <Private>False</Private>
       <Aliases>UnityUI</Aliases>
     </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(NuGetPackageRoot)outerwildsgamelibs\1.1.16.1372\lib\UnityEngine.UIModule.dll</HintPath>
+      <Private>False</Private>
+      <Aliases>UnityUIModule</Aliases>
+    </Reference>
   </ItemGroup>
 
   <!-- OWML path configuration -->

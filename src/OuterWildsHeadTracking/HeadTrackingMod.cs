@@ -40,11 +40,11 @@ namespace OuterWildsHeadTracking
         public static float PositionLimitX = 0.30f;
         public static float PositionLimitY = 0.20f;
         public static float PositionLimitZ = 0.40f;
-        public static float PositionLimitZBack = 0.10f;
+        public static float PositionLimitZBack = 0.0f;
         public static float PositionSmoothing = 0.15f;
 
         // Neck model settings
-        public static bool NeckModelEnabled = true;
+        public static bool NeckModelEnabled = false;
         public static float NeckModelHeight = 0.10f;
         public static float NeckModelForward = 0.08f;
 

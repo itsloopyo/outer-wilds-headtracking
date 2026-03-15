@@ -6,21 +6,7 @@ using Transform = UnityCoreModule::UnityEngine.Transform;
 namespace OuterWildsHeadTracking.Camera.Utilities
 {
     /// <summary>
-    /// Utility for temporarily modifying camera rotation and safely restoring it.
-    /// This follows the same pattern as CameraUnlock.Core.Unity.Tracking.TemporaryRotationScope.
-    ///
-    /// Note: Cannot use TemporaryRotationScope directly due to Unity extern alias requirements
-    /// in Outer Wilds (UnityCoreModule::UnityEngine vs standard UnityEngine).
-    ///
-    /// Usage in prefix/postfix patches:
-    /// <code>
-    /// // In prefix:
-    /// _scope = TemporaryRotationScope.ApplyBaseRotation(camera, baseRotation, headTracking);
-    ///
-    /// // In postfix:
-    /// _scope?.Dispose();
-    /// _scope = null;
-    /// </code>
+    /// Temporarily modifies camera localRotation and restores it on Dispose.
     /// </summary>
     public sealed class TemporaryRotationScope : IDisposable
     {
@@ -35,19 +21,9 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             _isActive = false;
         }
 
-        /// <summary>
-        /// Temporarily applies a rotation to the transform.
-        /// Must be disposed to restore original rotation.
-        /// </summary>
-        /// <param name="transform">The transform to modify.</param>
-        /// <param name="newRotation">The temporary rotation to apply.</param>
-        /// <returns>A scope that will restore the original rotation when disposed, or null if transform is null.</returns>
         public static TemporaryRotationScope? Apply(Transform? transform, Quaternion newRotation)
         {
-            if (transform == null)
-            {
-                return null;
-            }
+            if (transform == null) return null;
 
             var scope = new TemporaryRotationScope
             {
@@ -55,84 +31,40 @@ namespace OuterWildsHeadTracking.Camera.Utilities
                 _transform = transform,
                 _isActive = true
             };
-
             transform.localRotation = newRotation;
             return scope;
         }
 
-        /// <summary>
-        /// Temporarily applies the base rotation (without head tracking) to the camera.
-        /// This is the most common use case - removing head tracking for operations
-        /// that should use the game's intended aim direction.
-        /// </summary>
-        /// <param name="cameraTransform">The camera transform to modify.</param>
-        /// <param name="baseRotation">The game's intended rotation (world space).</param>
-        /// <param name="headTrackingRotation">The current head tracking rotation being applied.</param>
-        /// <returns>A scope that will restore the head-tracked rotation when disposed, or null if not applicable.</returns>
-        public static TemporaryRotationScope? ApplyBaseRotation(
-            Transform? cameraTransform,
-            Quaternion baseRotation,
-            Quaternion headTrackingRotation)
+        public static TemporaryRotationScope? RemoveHeadTracking(
+            Transform? cameraTransform, Quaternion baseRotation)
         {
-            if (cameraTransform == null)
-            {
-                return null;
-            }
+            if (cameraTransform == null || baseRotation == default) return null;
 
-            // Skip if no valid base rotation or no head tracking applied
-            if (baseRotation == default || headTrackingRotation == Quaternion.identity)
-            {
-                return null;
-            }
+            Quaternion targetLocalRotation = cameraTransform.parent != null
+                ? Quaternion.Inverse(cameraTransform.parent.rotation) * baseRotation
+                : baseRotation;
+            return Apply(cameraTransform, targetLocalRotation);
+        }
 
-            // Calculate what the local rotation should be with head tracking
+        public static TemporaryRotationScope? ApplyBaseRotation(
+            Transform? cameraTransform, Quaternion baseRotation, Quaternion headTrackingRotation)
+        {
+            if (cameraTransform == null) return null;
+            if (baseRotation == default || headTrackingRotation == Quaternion.identity) return null;
+
             Quaternion headTrackedWorld = baseRotation * headTrackingRotation;
             Quaternion targetLocalRotation = cameraTransform.parent != null
                 ? Quaternion.Inverse(cameraTransform.parent.rotation) * headTrackedWorld
                 : headTrackedWorld;
-
             return Apply(cameraTransform, targetLocalRotation);
         }
 
-        /// <summary>
-        /// Temporarily removes head tracking from the camera rotation.
-        /// The camera will point in the base aim direction during the scope.
-        /// </summary>
-        /// <param name="cameraTransform">The camera transform to modify.</param>
-        /// <param name="baseRotation">The game's intended rotation (world space).</param>
-        /// <returns>A scope that will restore the head-tracked rotation when disposed, or null if not applicable.</returns>
-        public static TemporaryRotationScope? RemoveHeadTracking(
-            Transform? cameraTransform,
-            Quaternion baseRotation)
-        {
-            if (cameraTransform == null || baseRotation == default)
-            {
-                return null;
-            }
-
-            // Calculate local rotation without head tracking
-            Quaternion targetLocalRotation = cameraTransform.parent != null
-                ? Quaternion.Inverse(cameraTransform.parent.rotation) * baseRotation
-                : baseRotation;
-
-            return Apply(cameraTransform, targetLocalRotation);
-        }
-
-        /// <summary>
-        /// Restores the saved rotation to the transform.
-        /// Safe to call multiple times.
-        /// </summary>
         public void Dispose()
         {
-            if (!_isActive || _transform == null)
-            {
-                return;
-            }
-
+            if (!_isActive || _transform == null) return;
             _transform.localRotation = _savedRotation;
             _isActive = false;
             _transform = null;
-            _savedRotation = Quaternion.identity;
         }
     }
 

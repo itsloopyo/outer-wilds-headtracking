@@ -17,35 +17,26 @@ namespace OuterWildsHeadTracking.Camera.UI
         {
             var trackerType = AccessTools.TypeByName("ReferenceFrameTracker");
             if (trackerType == null)
-            {
                 throw new InvalidOperationException("Could not find ReferenceFrameTracker type!");
-            }
 
-            // Patch FindReferenceFrameInLineOfSight
             var findInLineOfSightMethod = AccessTools.Method(trackerType, "FindReferenceFrameInLineOfSight");
             if (findInLineOfSightMethod != null)
             {
-                var prefix = AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(FindReferenceFrame_Prefix));
-                var postfix = AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(FindReferenceFrame_Postfix));
                 harmony.Patch(findInLineOfSightMethod,
-                    prefix: new HarmonyMethod(prefix),
-                    postfix: new HarmonyMethod(postfix));
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Prefix))),
+                    postfix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Postfix))));
             }
 
-            // Patch FindReferenceFrameInMapView
             var findInMapViewMethod = AccessTools.Method(trackerType, "FindReferenceFrameInMapView");
             if (findInMapViewMethod != null)
             {
-                var prefix = AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(FindReferenceFrame_Prefix));
-                var postfix = AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(FindReferenceFrame_Postfix));
                 harmony.Patch(findInMapViewMethod,
-                    prefix: new HarmonyMethod(prefix),
-                    postfix: new HarmonyMethod(postfix));
+                    prefix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Prefix))),
+                    postfix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Postfix))));
             }
         }
 
-        public static void FindReferenceFrame_Prefix() => _helper.BeginPatch();
-
-        public static void FindReferenceFrame_Postfix() => _helper.EndPatch();
+        public static void Prefix() => _helper.BeginPatch();
+        public static void Postfix() => _helper.EndPatch();
     }
 }

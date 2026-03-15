@@ -1,15 +1,20 @@
+extern alias UnityCoreModule;
 using System;
 using HarmonyLib;
-using OuterWildsHeadTracking.Camera.Utilities;
+using OuterWildsHeadTracking.Camera.Core;
+using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
 
 namespace OuterWildsHeadTracking.Camera.Effects
 {
     /// <summary>
-    /// Patches VisibilityObject.Update to ensure quantum objects check visibility against head-tracked rotation.
+    /// Patches VisibilityObject.Update to ensure quantum objects check visibility
+    /// against head-tracked rotation. Temporarily applies head tracking to the
+    /// camera transform for view cone checks.
     /// </summary>
     public static class QuantumVisibilityPatch
     {
-        private static readonly RotationPatchHelper _helper = new RotationPatchHelper(RotationPatchMode.ApplyHeadTracking);
+        private static Quaternion _savedRotation = Quaternion.identity;
+        private static bool _rotationModified = false;
 
         public static void ApplyPatches(Harmony harmony)
         {
@@ -38,8 +43,34 @@ namespace OuterWildsHeadTracking.Camera.Effects
                 postfix: new HarmonyMethod(postfixMethod));
         }
 
-        public static void VisibilityObject_Update_Prefix() => _helper.BeginPatch();
+        public static void VisibilityObject_Update_Prefix()
+        {
+            var mod = HeadTrackingMod.Instance;
+            if (mod == null || !mod.IsTrackingEnabled()) return;
 
-        public static void VisibilityObject_Update_Postfix() => _helper.EndPatch();
+            var cameraTransform = SimpleCameraPatch._cameraTransform;
+            if (cameraTransform == null) return;
+
+            var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
+            if (headTracking == Quaternion.identity) return;
+
+            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
+            if (baseRotation == default) return;
+
+            _savedRotation = cameraTransform.rotation;
+            cameraTransform.rotation = baseRotation * headTracking;
+            _rotationModified = true;
+        }
+
+        public static void VisibilityObject_Update_Postfix()
+        {
+            if (!_rotationModified) return;
+
+            var cameraTransform = SimpleCameraPatch._cameraTransform;
+            if (cameraTransform == null) return;
+
+            cameraTransform.rotation = _savedRotation;
+            _rotationModified = false;
+        }
     }
 }

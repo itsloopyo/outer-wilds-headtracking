@@ -6,6 +6,7 @@ using CameraUnlock.Core.Math;
 using OuterWildsHeadTracking.Configuration;
 using OuterWildsHeadTracking.Tracking;
 using OuterWildsHeadTracking.Camera.Utilities;
+using OuterWildsHeadTracking.Camera.Effects;
 using OuterWildsHeadTracking.Camera.UI;
 using OuterWildsHeadTracking.Utilities;
 using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
@@ -14,7 +15,10 @@ using Vector3 = UnityCoreModule::UnityEngine.Vector3;
 namespace OuterWildsHeadTracking.Camera.Core
 {
     /// <summary>
-    /// Core camera patch that applies head tracking rotation to the player camera.
+    /// Core camera patch that applies head tracking to the player camera transform.
+    /// Rotation and position are applied in Update_Postfix. The game resets localRotation
+    /// each frame via its own UpdateRotation, so no save/restore is needed for rotation.
+    /// Position is cleaned up in FixedUpdate_Prefix/Update_Prefix before game logic.
     /// </summary>
     [HarmonyPatch(typeof(PlayerCameraController))]
     public class SimpleCameraPatch
@@ -38,55 +42,46 @@ namespace OuterWildsHeadTracking.Camera.Core
         private static AccessTools.FieldRef<PlayerCameraController, float>? _degreesXRef;
         private static AccessTools.FieldRef<PlayerCameraController, float>? _degreesYRef;
 
-        private static float _cachedYawOffset = 0f;
-        private static float _cachedPitchOffset = 0f;
-        private static float _cachedRollOffset = 0f;
-        private static float _cachedHeadTrackingInfluence = 1f;
-        private static int _lastRotationCalcFrame = -1;
-        private static Quaternion _smoothedHeadTrackingRotation = Quaternion.identity;
+        public static float _smoothedYaw = 0f;
+        public static float _smoothedPitch = 0f;
+        public static float _smoothedRoll = 0f;
 
         // Position tracking state
-        private static Vec3 _lastPositionOffset = Vec3.Zero;
+        public static Vec3 _lastPositionOffset = Vec3.Zero;
         private static bool _positionOffsetApplied = false;
+
+        // Frame coordination for tracking data drain
+        public static int _lastDrainedFrame = -1;
 
         public static void RecenterTracking()
         {
             _centerSet = false;
-            _smoothedHeadTrackingRotation = Quaternion.identity;
+            _smoothedYaw = 0f;
+            _smoothedPitch = 0f;
+            _smoothedRoll = 0f;
             _lastPositionOffset = Vec3.Zero;
             _positionOffsetApplied = false;
             HeadTrackingMod.Instance?.GetTrackingClient()?.ResetProcessor();
         }
 
-        /// <summary>
-        /// Remove our position offset before the game's UpdateCamera lerps localPosition,
-        /// so the lerp operates on the game's clean position, not our offset position.
-        /// </summary>
         [HarmonyPatch("FixedUpdate")]
         [HarmonyPrefix]
         public static void FixedUpdate_Prefix(PlayerCameraController __instance)
         {
             if (!_positionOffsetApplied) return;
-
             var t = __instance.transform;
-            var pos = t.localPosition;
-            t.localPosition = pos - new Vector3(
+            t.localPosition -= new Vector3(
                 _lastPositionOffset.X, _lastPositionOffset.Y, _lastPositionOffset.Z);
             _positionOffsetApplied = false;
         }
 
-        /// <summary>
-        /// Also remove offset before Update, since Update calls UpdateCamera when reading-paused.
-        /// </summary>
         [HarmonyPatch("Update")]
         [HarmonyPrefix]
         public static void Update_Prefix(PlayerCameraController __instance)
         {
             if (!_positionOffsetApplied) return;
-
             var t = __instance.transform;
-            var pos = t.localPosition;
-            t.localPosition = pos - new Vector3(
+            t.localPosition -= new Vector3(
                 _lastPositionOffset.X, _lastPositionOffset.Y, _lastPositionOffset.Z);
             _positionOffsetApplied = false;
         }
@@ -146,10 +141,10 @@ namespace OuterWildsHeadTracking.Camera.Core
             }
 
             int currentFrame = UnityCoreModule::UnityEngine.Time.frameCount;
-            if (MapMarkerPatch._lastDrainedFrame != currentFrame)
+            if (_lastDrainedFrame != currentFrame)
             {
                 trackingClient.PeekRawEulerAngles();
-                MapMarkerPatch._lastDrainedFrame = currentFrame;
+                _lastDrainedFrame = currentFrame;
             }
 
             var rawAngles = trackingClient.PeekRawEulerAngles();
@@ -160,8 +155,9 @@ namespace OuterWildsHeadTracking.Camera.Core
             {
                 if (!rawAngles.IsValid)
                 {
-                    _lastHeadTrackingRotation = Quaternion.identity;
-                    cameraTransform.localRotation = gameWantedRotation * _smoothedHeadTrackingRotation;
+                    _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
+                        _smoothedYaw, _smoothedPitch, _smoothedRoll);
+                    cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
                     return;
                 }
 
@@ -169,22 +165,20 @@ namespace OuterWildsHeadTracking.Camera.Core
                 {
                     _stabilizationFramesRemaining--;
                     float t = 1f - UnityCoreModule::UnityEngine.Mathf.Exp(-TRACKING_LOSS_FADE_SPEED * UnityCoreModule::UnityEngine.Time.deltaTime);
-                    _smoothedHeadTrackingRotation = Quaternion.Slerp(
-                        _smoothedHeadTrackingRotation,
-                        Quaternion.identity,
-                        t
-                    );
-                    cameraTransform.localRotation = gameWantedRotation * _smoothedHeadTrackingRotation;
+                    _smoothedYaw *= (1f - t);
+                    _smoothedPitch *= (1f - t);
+                    _smoothedRoll *= (1f - t);
+                    _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
+                        _smoothedYaw, _smoothedPitch, _smoothedRoll);
+                    cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
                     return;
                 }
 
                 SetCenter(rawAngles, mod);
             }
 
-            ApplyHeadTracking(cameraTransform, gameWantedRotation, rawAngles, mod);
-
-            MapMarkerPatch._headTrackingAppliedFrame = currentFrame;
-            MapMarkerPatch._cameraHasHeadTracking = true;
+            ComputeHeadTracking(rawAngles, mod);
+            cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
         }
 
         [HarmonyPatch("UpdateLockOnTargeting")]
@@ -209,6 +203,8 @@ namespace OuterWildsHeadTracking.Camera.Core
             if (mod == null) return;
 
             ReticleUpdater.Create();
+            if (mod.ModHelper != null)
+                PlayerHeadHider.LogNearbyRenderers(__instance.transform, mod.ModHelper);
             UnityCoreModule::UnityEngine.Camera.onPreRender += OnCameraPreRender;
         }
 
@@ -232,11 +228,11 @@ namespace OuterWildsHeadTracking.Camera.Core
                 if (_secondsWithoutData > TRACKING_LOSS_FADE_DELAY_SECONDS)
                 {
                     float t = 1f - UnityCoreModule::UnityEngine.Mathf.Exp(-TRACKING_LOSS_FADE_SPEED * UnityCoreModule::UnityEngine.Time.deltaTime);
-                    _smoothedHeadTrackingRotation = Quaternion.Slerp(
-                        _smoothedHeadTrackingRotation,
-                        Quaternion.identity,
-                        t
-                    );
+                    _smoothedYaw *= (1f - t);
+                    _smoothedPitch *= (1f - t);
+                    _smoothedRoll *= (1f - t);
+                    _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
+                        _smoothedYaw, _smoothedPitch, _smoothedRoll);
                 }
 
                 if (_framesWithoutData > TrackingConstants.RECENTER_THRESHOLD_FRAMES && _centerSet)
@@ -258,11 +254,8 @@ namespace OuterWildsHeadTracking.Camera.Core
             _lastHeadTrackingRotation = Quaternion.identity;
         }
 
-        private static void ApplyHeadTracking(UnityCoreModule::UnityEngine.Transform cameraTransform,
-            Quaternion gameWantedRotation, OpenTrackClient.RawEulerAngles rawAngles, HeadTrackingMod mod)
+        private static void ComputeHeadTracking(OpenTrackClient.RawEulerAngles rawAngles, HeadTrackingMod mod)
         {
-            Quaternion headTrackingRotation;
-
             var trackingClient = mod.GetTrackingClient();
             float deltaTime = UnityCoreModule::UnityEngine.Time.deltaTime;
 
@@ -270,35 +263,14 @@ namespace OuterWildsHeadTracking.Camera.Core
 
             if (processed.HasValue)
             {
-                int currentFrame = UnityCoreModule::UnityEngine.Time.frameCount;
-
                 float yaw = processed.Value.Yaw;
                 float pitch = processed.Value.Pitch;
                 float roll = processed.Value.Roll;
 
                 float headTrackingInfluence = CalculateHeadTrackingInfluence();
-
-                bool needsRecalc = _lastRotationCalcFrame != currentFrame ||
-                    UnityCoreModule::UnityEngine.Mathf.Abs(yaw - _cachedYawOffset) > 0.01f ||
-                    UnityCoreModule::UnityEngine.Mathf.Abs(pitch - _cachedPitchOffset) > 0.01f ||
-                    UnityCoreModule::UnityEngine.Mathf.Abs(roll - _cachedRollOffset) > 0.01f ||
-                    UnityCoreModule::UnityEngine.Mathf.Abs(headTrackingInfluence - _cachedHeadTrackingInfluence) > 0.01f;
-
-                if (needsRecalc)
-                {
-                    _cachedYawOffset = yaw;
-                    _cachedPitchOffset = pitch;
-                    _cachedRollOffset = roll;
-                    _cachedHeadTrackingInfluence = headTrackingInfluence;
-                    _lastRotationCalcFrame = currentFrame;
-
-                    headTrackingRotation = Utilities.CameraRotationComposer.GetTrackingOnlyRotation(
-                        yaw, pitch, roll, headTrackingInfluence);
-                }
-                else
-                {
-                    headTrackingRotation = _lastHeadTrackingRotation;
-                }
+                yaw *= headTrackingInfluence;
+                pitch *= headTrackingInfluence;
+                roll *= headTrackingInfluence;
 
                 float smoothing = HeadTrackingMod.Smoothing;
                 bool isRemote = trackingClient?.IsRemoteSource ?? false;
@@ -316,35 +288,33 @@ namespace OuterWildsHeadTracking.Camera.Core
                     }
                 }
 
-                float t = SmoothingUtils.CalculateSmoothingFactor(smoothing, deltaTime);
-                _smoothedHeadTrackingRotation = Quaternion.Slerp(_smoothedHeadTrackingRotation, headTrackingRotation, t);
-                headTrackingRotation = _smoothedHeadTrackingRotation;
+                _smoothedYaw = SmoothingUtils.Smooth(_smoothedYaw, yaw, smoothing, deltaTime);
+                _smoothedPitch = SmoothingUtils.Smooth(_smoothedPitch, pitch, smoothing, deltaTime);
+                _smoothedRoll = SmoothingUtils.Smooth(_smoothedRoll, roll, smoothing, deltaTime);
 
-                _lastHeadTrackingRotation = headTrackingRotation;
-                cameraTransform.localRotation = gameWantedRotation * headTrackingRotation;
+                _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
+                    _smoothedYaw, _smoothedPitch, _smoothedRoll);
 
-                // Position tracking
-                if (HeadTrackingMod.PositionEnabled && trackingClient != null)
+                // Position tracking: apply to localPosition so markers see the offset.
+                // Cleaned up in FixedUpdate_Prefix/Update_Prefix before game logic.
+                if (HeadTrackingMod.PositionEnabled && trackingClient != null && _cameraTransform != null)
                 {
-                    // Build rotation quaternion matching the tracking rotation for neck model
                     var headRotQ = QuaternionUtils.FromYawPitchRoll(
-                        yaw * headTrackingInfluence,
-                        pitch * headTrackingInfluence,
-                        roll * headTrackingInfluence);
+                        _smoothedYaw, _smoothedPitch, _smoothedRoll);
 
                     Vec3 posOffset = trackingClient.GetProcessedPosition(headRotQ, deltaTime);
                     Vec3 scaledPos = posOffset * headTrackingInfluence;
                     _lastPositionOffset = scaledPos;
 
-                    var gamePos = cameraTransform.localPosition;
-                    cameraTransform.localPosition = gamePos + new Vector3(
+                    _cameraTransform.localPosition += new Vector3(
                         scaledPos.X, scaledPos.Y, scaledPos.Z);
                     _positionOffsetApplied = true;
                 }
             }
             else
             {
-                cameraTransform.localRotation = gameWantedRotation * _smoothedHeadTrackingRotation;
+                _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
+                    _smoothedYaw, _smoothedPitch, _smoothedRoll);
             }
         }
 

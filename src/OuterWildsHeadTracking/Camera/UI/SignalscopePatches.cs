@@ -1,7 +1,6 @@
 extern alias UnityCoreModule;
 using System;
 using HarmonyLib;
-using OuterWildsHeadTracking.Camera.Utilities;
 using OuterWildsHeadTracking.Camera.Core;
 using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
 using Vector3 = UnityCoreModule::UnityEngine.Vector3;
@@ -9,12 +8,14 @@ using Vector3 = UnityCoreModule::UnityEngine.Vector3;
 namespace OuterWildsHeadTracking.Camera.UI
 {
     /// <summary>
-    /// Patches for Signalscope tool - ensures signal detection uses head direction
+    /// Patches for Signalscope tool - ensures signal detection uses head direction.
+    /// With view matrix, the transform is clean so we temporarily apply head tracking
+    /// for methods that read camera.transform directly.
     /// </summary>
     public static class SignalscopePatches
     {
-        private static Quaternion _signalscopeSavedRotation = Quaternion.identity;
-        private static bool _signalscopeRotationModified = false;
+        private static Quaternion _savedRotation = Quaternion.identity;
+        private static bool _rotationModified = false;
 
         public static void ApplyPatches(Harmony harmony)
         {
@@ -72,30 +73,26 @@ namespace OuterWildsHeadTracking.Camera.UI
             var cameraTransform = SimpleCameraPatch._cameraTransform;
             if (cameraTransform == null) return;
 
-            EnsureFrameReset();
-
-            if (MapMarkerPatch._cameraHasHeadTracking) return;
-
             var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
             if (headTracking == Quaternion.identity) return;
 
-            _signalscopeSavedRotation = cameraTransform.localRotation;
-            cameraTransform.localRotation = _signalscopeSavedRotation * headTracking;
-            _signalscopeRotationModified = true;
-            MapMarkerPatch._cameraHasHeadTracking = true;
+            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
+            if (baseRotation == default) return;
+
+            _savedRotation = cameraTransform.rotation;
+            cameraTransform.rotation = baseRotation * headTracking;
+            _rotationModified = true;
         }
 
         public static void Signalscope_Update_Postfix()
         {
-            if (!_signalscopeRotationModified) return;
+            if (!_rotationModified) return;
 
             var cameraTransform = SimpleCameraPatch._cameraTransform;
             if (cameraTransform == null) return;
 
-            cameraTransform.localRotation = _signalscopeSavedRotation;
-            _signalscopeSavedRotation = Quaternion.identity;
-            _signalscopeRotationModified = false;
-            MapMarkerPatch._cameraHasHeadTracking = false;
+            cameraTransform.rotation = _savedRotation;
+            _rotationModified = false;
         }
 
         public static void Signalscope_GetScopeDirection_Postfix(ref Vector3 __result)
@@ -122,19 +119,5 @@ namespace OuterWildsHeadTracking.Camera.UI
                 __result = (baseRotation * headTracking) * Vector3.forward;
             }
         }
-
-        private static void EnsureFrameReset()
-        {
-            int currentFrame = UnityCoreModule::UnityEngine.Time.frameCount;
-            if (MapMarkerPatch._lastFrameReset != currentFrame)
-            {
-                if (MapMarkerPatch._headTrackingAppliedFrame != currentFrame)
-                {
-                    MapMarkerPatch._cameraHasHeadTracking = false;
-                }
-                MapMarkerPatch._lastFrameReset = currentFrame;
-            }
-        }
-
     }
 }

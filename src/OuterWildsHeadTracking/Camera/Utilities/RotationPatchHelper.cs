@@ -4,28 +4,15 @@ using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
 
 namespace OuterWildsHeadTracking.Camera.Utilities
 {
-    /// <summary>
-    /// Helper for patches that need to temporarily modify camera rotation.
-    /// Provides common prefix/postfix logic to reduce code duplication.
-    /// </summary>
     public enum RotationPatchMode
     {
-        /// <summary>
-        /// Remove head tracking - camera points at base/reticle direction.
-        /// Use for raycasts, screen position calculations, fog lights, etc.
-        /// </summary>
         RemoveHeadTracking,
-
-        /// <summary>
-        /// Apply head tracking to base rotation.
-        /// Use when the original code doesn't account for head tracking.
-        /// </summary>
         ApplyHeadTracking
     }
 
     /// <summary>
     /// Manages a TemporaryRotationScope for a single patch.
-    /// Create one instance per patch class and call BeginPatch/EndPatch in prefix/postfix.
+    /// Call BeginPatch in prefix and EndPatch in postfix.
     /// </summary>
     public class RotationPatchHelper
     {
@@ -37,9 +24,6 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             _mode = mode;
         }
 
-        /// <summary>
-        /// Call in patch prefix. Returns true if rotation was modified.
-        /// </summary>
         public bool BeginPatch()
         {
             var mod = HeadTrackingMod.Instance;
@@ -61,9 +45,6 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             return _scope != null;
         }
 
-        /// <summary>
-        /// Call in patch postfix to restore original rotation.
-        /// </summary>
         public void EndPatch()
         {
             _scope?.Dispose();

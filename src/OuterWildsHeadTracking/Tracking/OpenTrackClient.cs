@@ -84,7 +84,7 @@ namespace OuterWildsHeadTracking.Tracking
                     HeadTrackingMod.PositionLimitZ,
                     HeadTrackingMod.PositionLimitZBack,
                     HeadTrackingMod.PositionSmoothing,
-                    invertX: true, invertY: false, invertZ: true
+                    invertX: true, invertY: false, invertZ: false
                 );
                 _positionProcessor.NeckModelSettings = new NeckModelSettings(
                     HeadTrackingMod.NeckModelEnabled,
