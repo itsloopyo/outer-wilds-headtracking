@@ -43,11 +43,6 @@ namespace OuterWildsHeadTracking
         public static float PositionLimitZBack = 0.0f;
         public static float PositionSmoothing = 0.15f;
 
-        // Neck model settings
-        public static bool NeckModelEnabled = false;
-        public static float NeckModelHeight = 0.10f;
-        public static float NeckModelForward = 0.08f;
-
         public new IModHelper? ModHelper { get; private set; }
 
         private void Awake()
@@ -248,11 +243,6 @@ namespace OuterWildsHeadTracking
             if (PositionSensitivityY <= 0) PositionSensitivityY = 2.0f;
             if (PositionSensitivityZ <= 0) PositionSensitivityZ = 2.0f;
             PositionSmoothing = UnityCoreModule::UnityEngine.Mathf.Clamp01(PositionSmoothing);
-
-            // Neck model settings
-            NeckModelEnabled = ModHelper.Config.GetSettingsValue<bool>("neckModelEnabled");
-            NeckModelHeight = (float)ModHelper.Config.GetSettingsValue<double>("neckModelHeight");
-            NeckModelForward = (float)ModHelper.Config.GetSettingsValue<double>("neckModelForward");
 
             // Update processor settings when config changes
             _trackingClient?.UpdateProcessorSettings();

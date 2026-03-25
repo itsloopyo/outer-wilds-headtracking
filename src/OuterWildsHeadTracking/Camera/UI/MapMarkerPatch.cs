@@ -21,7 +21,6 @@ namespace OuterWildsHeadTracking.Camera.UI
             QuantumVisibilityPatch.ApplyPatches(harmony);
             FlashlightPatch.ApplyPatches(harmony);
             ReferenceFrameTrackerPatch.ApplyPatches(harmony);
-            CanvasMarkerPatch.ApplyPatches(harmony);
         }
     }
 }

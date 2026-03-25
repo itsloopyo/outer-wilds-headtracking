@@ -8,7 +8,6 @@ An **unofficial** head tracking mod for Outer Wilds that lets you look around na
 
 - **Decoupled look + aim**: Look around freely with your head while your aim stays independent
 - **6DOF head tracking**: Yaw, pitch, roll rotation plus positional tracking (lean in/out/side-to-side) via OpenTrack UDP protocol
-- **Neck model**: Simulates realistic head rotation around the neck pivot, so tilting your head moves your eyes along a natural arc
 - **Adaptive smoothing**: Automatically adjusts smoothing for WiFi/remote connections to reduce jitter
 - **Smart auto-disable**: Tracking automatically pauses during model ship piloting, signalscope zoom, and pause menu
 - **Full game integration**: Flashlight follows your gaze, Nomai Translator targets where you look, quantum objects respect head-tracked view direction
@@ -65,9 +64,6 @@ Settings are available in the OWML Mod Manager or in-game mod menu. The mod crea
 | `positionLimitY` | 0.20 | Max vertical displacement (meters) |
 | `positionLimitZ` | 0.40 | Max depth displacement (meters) |
 | `positionSmoothing` | 0.15 | Position smoothing factor |
-| `neckModelEnabled` | true | Simulate head rotating around neck pivot |
-| `neckModelHeight` | 0.10 | Neck-to-eyes vertical distance (meters) |
-| `neckModelForward` | 0.08 | Neck-to-eyes forward distance (meters) |
 
 ## Building from Source
 

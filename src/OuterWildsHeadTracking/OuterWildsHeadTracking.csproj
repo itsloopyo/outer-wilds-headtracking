@@ -44,6 +44,10 @@
       <Private>False</Private>
       <Aliases>UnityUIModule</Aliases>
     </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(NuGetPackageRoot)outerwildsgamelibs\1.1.16.1372\lib\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- OWML path configuration -->

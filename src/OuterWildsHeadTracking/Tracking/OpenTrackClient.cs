@@ -86,11 +86,6 @@ namespace OuterWildsHeadTracking.Tracking
                     HeadTrackingMod.PositionSmoothing,
                     invertX: true, invertY: false, invertZ: false
                 );
-                _positionProcessor.NeckModelSettings = new NeckModelSettings(
-                    HeadTrackingMod.NeckModelEnabled,
-                    HeadTrackingMod.NeckModelHeight,
-                    HeadTrackingMod.NeckModelForward
-                );
             }
         }
 
@@ -121,7 +116,7 @@ namespace OuterWildsHeadTracking.Tracking
         /// <summary>
         /// Processes position data through the position pipeline.
         /// </summary>
-        /// <param name="headRotQ">Head rotation quaternion (for neck model).</param>
+        /// <param name="headRotQ">Head rotation quaternion.</param>
         /// <param name="deltaTime">Frame delta time.</param>
         /// <returns>Processed position offset in meters, or Vec3.Zero.</returns>
         public Vec3 GetProcessedPosition(Quat4 headRotQ, float deltaTime)
@@ -134,7 +129,7 @@ namespace OuterWildsHeadTracking.Tracking
 
             var rawPos = _receiver.GetLatestPosition();
             var interpolatedPos = _positionInterpolator.Update(rawPos, deltaTime);
-            return _positionProcessor.Process(interpolatedPos, headRotQ, IsRemoteSource, deltaTime);
+            return _positionProcessor.Process(interpolatedPos, headRotQ, deltaTime);
         }
 
         /// <summary>
@@ -185,7 +180,7 @@ namespace OuterWildsHeadTracking.Tracking
             }
 
             var rawPose = _receiver.GetLatestPose();
-            var processed = _processor.Process(rawPose, IsRemoteSource, deltaTime);
+            var processed = _processor.Process(rawPose, deltaTime);
 
             return new ProcessedRotation
             {

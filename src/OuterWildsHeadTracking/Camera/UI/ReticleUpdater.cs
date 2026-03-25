@@ -5,6 +5,8 @@ using Vector3 = UnityCoreModule::UnityEngine.Vector3;
 using GameObject = UnityCoreModule::UnityEngine.GameObject;
 using RectTransform = UnityCoreModule::UnityEngine.RectTransform;
 using MonoBehaviour = UnityCoreModule::UnityEngine.MonoBehaviour;
+using Physics = UnityEngine.Physics;
+using QueryTriggerInteraction = UnityEngine.QueryTriggerInteraction;
 
 namespace OuterWildsHeadTracking.Camera.UI
 {
@@ -14,6 +16,11 @@ namespace OuterWildsHeadTracking.Camera.UI
     /// </summary>
     public class ReticleUpdater : MonoBehaviour
     {
+        private const float MaxRaycastDistance = 1000f;
+        private const float MinRaycastDistance = 0.5f;
+        private const float DistanceSmoothingRate = 15f;
+        private static float _lastHitDistance = 100f;
+
         private static ReticleUpdater _instance = null!;
         private RectTransform _reticleTransform = null!;
         private UnityCoreModule::UnityEngine.Camera _mainCamera = null!;
@@ -81,9 +88,20 @@ namespace OuterWildsHeadTracking.Camera.UI
             var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
             if (baseRotation == default) return;
 
-            // Project base aim direction to screen position
+            // Raycast along the base aim direction to find the actual target distance.
             var baseForward = baseRotation * Vector3.forward;
-            var screenPoint = _mainCamera.WorldToScreenPoint(_mainCamera.transform.position + baseForward * 100f);
+            Vector3 aimOrigin = _mainCamera.transform.position;
+
+            UnityEngine.RaycastHit hit;
+            if (Physics.Raycast(aimOrigin, baseForward, out hit, MaxRaycastDistance,
+                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                && hit.distance >= MinRaycastDistance)
+            {
+                float t = 1f - UnityCoreModule::UnityEngine.Mathf.Exp(-DistanceSmoothingRate * UnityCoreModule::UnityEngine.Time.deltaTime);
+                _lastHitDistance = UnityCoreModule::UnityEngine.Mathf.Lerp(_lastHitDistance, hit.distance, t);
+            }
+
+            var screenPoint = _mainCamera.WorldToScreenPoint(aimOrigin + baseForward * _lastHitDistance);
 
             // Update reticle position to match base aim direction
             _reticleTransform.position = new Vector3(screenPoint.x, screenPoint.y, 0);
