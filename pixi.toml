@@ -9,8 +9,8 @@ platforms = ["win-64", "osx-arm64", "linux-64"]
 sync = "git submodule update --remote cameraunlock-core"
 
 # Full release workflow - creates tag and pushes to trigger CI release
-# Usage: pixi run release [version]
-# Example: pixi run release 1.0.0
+# Usage: pixi run release <major|minor|patch|X.Y.Z>
+# Example: pixi run release patch
 release = "bash scripts/release.sh"
 
 # Windows-only tasks (build, deploy, local testing)

@@ -119,15 +119,29 @@ VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
     echo -e "${YELLOW}Current version: ${WHITE}$CURRENT_VERSION${NC}"
     echo ""
-    echo -e "${YELLOW}Usage: ${WHITE}pixi run release <version>${NC}"
-    echo -e "${YELLOW}Example: ${WHITE}pixi run release 1.1.0${NC}"
+    echo -e "${YELLOW}Usage: ${WHITE}pixi run release <major|minor|patch|X.Y.Z>${NC}"
+    echo -e "${YELLOW}Example: ${WHITE}pixi run release patch${NC}"
     exit 0
 fi
 
-# Validate version format
-if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo -e "${RED}Error: Invalid version format '$VERSION'${NC}"
-    echo -e "${YELLOW}Use semantic versioning: X.Y.Z (e.g., 1.0.0, 1.2.3)${NC}"
+# Resolve major/minor/patch into a concrete version (or accept literal X.Y.Z)
+ARG="$(echo "$VERSION" | tr '[:upper:]' '[:lower:]')"
+if [[ "$ARG" == "major" || "$ARG" == "minor" || "$ARG" == "patch" ]]; then
+    CORE="${CURRENT_VERSION%%-*}"
+    CORE="${CORE%%+*}"
+    if [[ ! "$CORE" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+        echo -e "${RED}Error: Cannot bump '$ARG': current version '$CURRENT_VERSION' is not in X.Y.Z form${NC}"
+        exit 1
+    fi
+    MAJ="${BASH_REMATCH[1]}"; MIN="${BASH_REMATCH[2]}"; PAT="${BASH_REMATCH[3]}"
+    case "$ARG" in
+        major) VERSION="$((MAJ + 1)).0.0" ;;
+        minor) VERSION="${MAJ}.$((MIN + 1)).0" ;;
+        patch) VERSION="${MAJ}.${MIN}.$((PAT + 1))" ;;
+    esac
+elif ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo -e "${RED}Error: Invalid version '$VERSION'${NC}"
+    echo -e "${YELLOW}Use 'major', 'minor', 'patch', or X.Y.Z (e.g., 1.0.0, 1.2.3)${NC}"
     exit 1
 fi
 

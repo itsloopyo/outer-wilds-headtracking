@@ -51,17 +51,18 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
     Write-Host $currentVersion -ForegroundColor White
     Write-Host ""
     Write-Host "Usage: " -NoNewline -ForegroundColor Yellow
-    Write-Host "pixi run release <version>" -ForegroundColor White
+    Write-Host "pixi run release <major|minor|patch|X.Y.Z>" -ForegroundColor White
     Write-Host ""
     Write-Host "Example: " -NoNewline -ForegroundColor Yellow
-    Write-Host "pixi run release 1.1.0" -ForegroundColor White
+    Write-Host "pixi run release patch" -ForegroundColor White
     exit 0
 }
 
-# Validate version format
-if ($Version -notmatch '^\d+\.\d+\.\d+$') {
-    Write-Host "Error: Invalid version format '$Version'" -ForegroundColor Red
-    Write-Host "Use semantic versioning: X.Y.Z (e.g., 1.0.0, 1.2.3)" -ForegroundColor Yellow
+# Resolve major/minor/patch into a concrete version (or accept literal X.Y.Z)
+try {
+    $Version = Resolve-ReleaseVersion -Argument $Version -CurrentVersion $currentVersion
+} catch {
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
 

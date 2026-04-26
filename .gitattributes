@@ -45,6 +45,8 @@
 *.bash text eol=lf
 *.zsh text eol=lf
 *.fish text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
 
 # Config files
 *.env text eol=lf

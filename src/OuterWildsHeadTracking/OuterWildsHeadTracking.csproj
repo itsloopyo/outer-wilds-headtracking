@@ -5,6 +5,7 @@
     <AssemblyName>OuterWildsHeadTracking</AssemblyName>
     <RootNamespace>OuterWildsHeadTracking</RootNamespace>
     <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
