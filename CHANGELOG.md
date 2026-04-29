@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0] - 2026-04-29
+
+### Other
+
+- Remove automatic recenter on unpause
+- Add asymmetric Z position limit (positionLimitZBack) to prevent backward camera clipping
+- Rewrite camera system: transform-based rotation with per-axis smoothing
+- Add tracking mode cycling and chord hotkey bindings
+
 ## [1.0.3] - 2026-03-05
 
 ### Other
