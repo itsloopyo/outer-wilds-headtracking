@@ -1,12 +1,66 @@
-<!-- managed by ticketing app - edit via Agents in the sidebar; changes here are overwritten on the next sync -->
+<!-- managed by Lab - edit via Agents in the sidebar; changes here are overwritten on the next sync -->
 
-<!-- agent: Head Tracking -->
-# CameraUnlock Head Tracking Mods — The Definitive Guide
+<!-- agent: Code quality minimums -->
+## Code quality minimums
 
-Single source of truth for building decoupled look+aim head tracking mods across the CameraUnlock monorepo.
+These apply to every line of code in every repo. They override convenience.
 
----
+### Fail fast, don't fail silent
 
+If something fails, let it throw. No swallowed exceptions. No silent
+fallbacks that mask the underlying problem. No retry loops that paper
+over a broken contract. The error message is the diagnostic; if you
+catch and rewrite it, you've thrown the diagnostic away.
+
+The narrow exception: validate at system boundaries (user input,
+external APIs, file system). Everything inside the boundary trusts the
+contract.
+
+### No fallbacks for impossible cases
+
+Don't add error handling, validation, or fallbacks for scenarios that
+can't happen. Trust internal code and framework guarantees. A `Result`
+that's always `Ok` doesn't need to be a `Result`. A null check on a
+value that's constructed three lines earlier is noise.
+
+### No over-engineering
+
+Don't add features, refactor, or introduce abstractions beyond what the
+task requires. A bug fix doesn't need surrounding cleanup. A one-shot
+operation doesn't need a helper function. Don't design for hypothetical
+future requirements. Three similar lines is better than a premature
+abstraction.
+
+No half-finished implementations either. If you can't complete it, say
+so and stop, don't leave a stub that compiles but lies.
+
+### No decorative comments
+
+Default to writing zero comments. Only add a comment when the WHY is
+non-obvious: a hidden constraint, a subtle invariant, a workaround for
+a specific bug, behavior that would surprise a reader. If removing the
+comment wouldn't confuse a future reader, don't write it.
+
+Don't explain WHAT the code does (well-named identifiers do that).
+Don't reference the current task, fix, or callers ("used by X", "added
+for the Y flow", "fixes #123"). Those belong in the PR description and
+rot as the codebase evolves.
+
+### No backwards-compat hacks for unused code
+
+If something is unused, delete it completely. Don't rename to `_unused`,
+don't add `// removed` comments, don't re-export removed types as
+aliases. Backwards compatibility is for shipped public APIs (see the
+Libraries category rule); internal scaffolding gets cut clean.
+
+
+<!-- agent: Pixi rules -->
+In pixi files:
+
+The `project` field is deprecated. Use `workspace` instead.
+
+
+<!-- agent: Head tracking mod doctrine -->
 ## Ethics and Conduct
 
 Non-negotiable:
@@ -155,7 +209,7 @@ DL2 (C++) uses quaternion shortest-arc rotation to avoid gimbal lock at extreme 
 1. Process through `PositionProcessor` (sensitivity, limits, smoothing, inversion per axis).
 2. Interpolate between samples via `PositionInterpolator`.
 3. Apply as translation in **original view space** (before head rotation) so the offset follows body orientation, not head-rotated view.
-4. Asymmetric limits: more range forward (0.30–0.40m) than backward (0.02–0.10m) to prevent clipping through the player model.
+4. Asymmetric Z limits: more range forward (`LimitZ`, default 0.40m) than backward (`LimitZBack`, default 0.10m) to prevent clipping through the player model. X and Y use single symmetric limits (`LimitX`, `LimitY`).
 5. Horizon-locked basis (flat forward vector) for roll independence.
 
 View-matrix math:
@@ -275,15 +329,15 @@ When drawing our own reticle, hide the game's built-in crosshair:
 ### Auto-Recenter
 
 - Recenter on first connection (transition from no-data to fresh-data).
-- Wait ~5 stabilization frames — initial samples are noisy.
+- Wait `StabilizationFrames` (default 10) before recentering after a resume, so phone trackers have time to settle. `TrackingLossHandler.StabilizationFrames` in `Core.Unity`.
 - `Recenter()` sets current smoothed pose as the center offset via quaternion inverse.
 
 ### Tracking Loss
 
-- **Hold:** display last known pose (no snap to center).
-- **Freshness:** `IsDataFresh(maxAgeMs = 500)`.
+- **Hold by default:** display last known pose (no snap to center).
+- **Freshness:** `IsDataFresh(maxAgeMs = 500)` on `TrackingPose` and `OpenTrackReceiver`.
 - **Resume:** smoothing blends back naturally — never snap.
-- Outer Wilds variant fades out tracking over 0.5s, auto-recenters after 60 frames of no data.
+- **Optional fade + auto-recenter** via `TrackingLossHandler` (`Core.Unity`): hold for `FadeDelaySeconds` (0.5s), exponential fade to identity at `FadeSpeed` (2.0), auto-recenter after `RecenterThresholdFrames` (60) frames of no data. Outer Wilds is the canonical user. Mods that don't instantiate `TrackingLossHandler` just hold.
 
 ---
 
@@ -364,11 +418,10 @@ If a specific game does bind any of these (very rare), document the conflict in 
 | Data Freshness | 500 ms | | |
 | Position Enabled | true | | |
 | Position Sensitivity X / Y / Z | 1.0 | 0.0–5.0 | Override only when physically necessary (e.g., RE:Requiem uses 2.0 because native head-bob range is small) |
-| Position Limit X | 0.30 m | 0.01–0.5 | |
-| Position Limit Y (up) | 0.20 m | 0–0.5 | |
-| Position Limit Y (down) | 0.05 m | 0–0.5 | Minimal |
-| Position Limit Z (forward) | 0.40 m | 0.01–0.5 | |
-| Position Limit Z (back) | 0.10 m | 0.01–0.5 | Prevents clipping |
+| Position Limit X | 0.30 m | 0.01–0.5 | Symmetric (`LimitX`, applied as `±LimitX`) |
+| Position Limit Y | 0.20 m | 0.01–0.5 | Symmetric (`LimitY`, applied as `±LimitY`) |
+| Position Limit Z (forward) | 0.40 m | 0.01–0.5 | `LimitZ` |
+| Position Limit Z (back) | 0.10 m | 0.01–0.5 | `LimitZBack`. Asymmetric, prevents clipping through player |
 | Position Smoothing | 0.15 | 0.0–1.0 | At/above baseline floor |
 
 ---
@@ -941,8 +994,8 @@ Existing mods have inconsistent GUIDs (`com.headtracking.obradinn`, `com.<game>.
 - **Cache `Camera.main`** — it calls `FindGameObjectWithTag` internally. Cache per-frame or per-30-frames.
 - **Rate-limit game state detection** to 0.1s or 30 frames.
 - **No allocations in hot paths** (OnPreCull/LateUpdate/Update).
-- **Multi-camera dedup** — games call OnPreCull multiple times per frame (shadows, reflections). Cache per-frame with a 1ms threshold (DL2).
-- **Lock-free receiver** — OpenTrackReceiver uses volatile reads on the hot path.
+- **Multi-camera dedup** — games call `Camera.onPreCull` multiple times per frame (shadows, reflections, secondary cams). Use `PerFrameCache` (`Core.Unity/Utilities`) which keys on `Time.frameCount` so first-call-per-frame wins; subsequent calls reuse the cached result.
+- **Lock-free receiver** — `OpenTrackReceiver` uses `volatile` reads on `_rotationPitch/_rotationYaw/_rotationRoll/_isRemoteConnection` on the hot path.
 
 ---
 

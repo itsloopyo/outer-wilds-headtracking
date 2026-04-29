@@ -93,23 +93,6 @@ Write-Host "Current version: $currentVersion" -ForegroundColor Gray
 Write-Host "New version:     $Version" -ForegroundColor Green
 Write-Host ""
 
-# Confirm
-Write-Host "This will:" -ForegroundColor Yellow
-Write-Host "  1. Update version in manifest.json to $Version" -ForegroundColor White
-Write-Host "  2. Generate CHANGELOG from commits" -ForegroundColor White
-Write-Host "  3. Commit the change" -ForegroundColor White
-Write-Host "  4. Create tag $tagName" -ForegroundColor White
-Write-Host "  5. Push to GitHub (triggers release workflow)" -ForegroundColor White
-Write-Host ""
-
-$confirm = Read-Host "Continue? (y/N)"
-if ($confirm -ne 'y' -and $confirm -ne 'Y') {
-    Write-Host "Cancelled" -ForegroundColor Yellow
-    exit 0
-}
-
-Write-Host ""
-
 # Step 1: Update version in manifest.json
 Write-Host "Updating manifest.json version to $Version..." -ForegroundColor Cyan
 Update-ManifestVersion -ManifestPath $manifestPath -Version $Version

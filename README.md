@@ -38,11 +38,20 @@ The mod automatically detects remote connections (e.g., phone over WiFi) and app
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| **Home** | Recenter tracking (set current head position as neutral) |
-| **End** | Toggle head tracking on/off |
-| **Page Up** | Toggle positional tracking on/off |
+Two equivalent binding sets - use whichever your keyboard has:
+
+| Action              | Nav-cluster | Chord           |
+|---------------------|-------------|-----------------|
+| Recenter            | `Home`      | `Ctrl+Shift+T`  |
+| Toggle tracking     | `End`       | `Ctrl+Shift+Y`  |
+| Cycle tracking mode | `Page Up`   | `Ctrl+Shift+G`  |
+
+`Page Up` / `Ctrl+Shift+G` cycles tracking mode:
+
+1. Normal head-tracked gameplay
+2. Positional tracking disabled, rotational tracking enabled
+3. Rotational tracking disabled, positional tracking enabled
+4. Back to normal
 
 ## Configuration
 

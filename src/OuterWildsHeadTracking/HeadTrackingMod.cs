@@ -17,6 +17,13 @@ using KeyCode = UnityCoreModule::UnityEngine.KeyCode;
 
 namespace OuterWildsHeadTracking
 {
+    public enum TrackingMode
+    {
+        Both = 0,
+        RotationOnly = 1,
+        PositionOnly = 2
+    }
+
     public class HeadTrackingMod : ModBehaviour
     {
         public static HeadTrackingMod? Instance { get; private set; }
@@ -25,6 +32,7 @@ namespace OuterWildsHeadTracking
         private bool _trackingEnabled = true;
         private bool _trackingStateBeforeModelShip = true;
         private bool _trackingStateBeforeSignalscopeZoom = true;
+        private TrackingMode _trackingMode = TrackingMode.Both;
 
         public static float YawSensitivity = 1.0f;
         public static float PitchSensitivity = 1.0f;
@@ -82,7 +90,8 @@ namespace OuterWildsHeadTracking
 
                 _trackingClient = new OpenTrackClient(port);
 
-                if (_trackingClient.Initialize())
+                var helper = ModHelper;
+                if (_trackingClient.Initialize(msg => helper.Console.WriteLine($"[HeadTracking] {msg}", MessageType.Info)))
                 {
                     ModHelper.Console.WriteLine($"[HeadTracking] Initialized (Home=recenter, End=toggle, PgUp=position, smoothing={Smoothing})", MessageType.Info);
                 }
@@ -115,24 +124,36 @@ namespace OuterWildsHeadTracking
 
             try
             {
-                // Home - Recenter tracking
-                if (keyboard.homeKey.wasPressedThisFrame)
+                bool chord = (keyboard.leftCtrlKey.isPressed || keyboard.rightCtrlKey.isPressed)
+                          && (keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed);
+
+                // Recenter: Home or Ctrl+Shift+T
+                if (keyboard.homeKey.wasPressedThisFrame
+                    || (chord && keyboard.tKey.wasPressedThisFrame))
                 {
                     global::OuterWildsHeadTracking.Camera.Core.SimpleCameraPatch.RecenterTracking();
                 }
 
-                // End - Toggle tracking on/off
-                if (keyboard.endKey.wasPressedThisFrame)
+                // Toggle tracking: End or Ctrl+Shift+Y
+                if (keyboard.endKey.wasPressedThisFrame
+                    || (chord && keyboard.yKey.wasPressedThisFrame))
                 {
                     _trackingEnabled = !_trackingEnabled;
                 }
 
-                // PageUp - Toggle positional tracking on/off
-                if (keyboard.pageUpKey.wasPressedThisFrame)
+                // Cycle tracking mode: Page Up or Ctrl+Shift+G
+                // Both → RotationOnly (position disabled) → PositionOnly (rotation disabled) → Both
+                if (keyboard.pageUpKey.wasPressedThisFrame
+                    || (chord && keyboard.gKey.wasPressedThisFrame))
                 {
-                    PositionEnabled = !PositionEnabled;
+                    _trackingMode = (TrackingMode)(((int)_trackingMode + 1) % 3);
+                    string desc = _trackingMode == TrackingMode.Both
+                        ? "rotation + position"
+                        : _trackingMode == TrackingMode.RotationOnly
+                            ? "rotation only (position disabled)"
+                            : "position only (rotation disabled)";
                     ModHelper?.Console.WriteLine(
-                        $"[HeadTracking] Position tracking {(PositionEnabled ? "ON" : "OFF")}",
+                        $"[HeadTracking] Tracking mode: {desc}",
                         MessageType.Info);
                 }
             }
@@ -199,6 +220,16 @@ namespace OuterWildsHeadTracking
             // Don't check IsConnected() here - let the tracking client handle reconnection
             // by continuing to read from the socket even after a timeout
             return _trackingEnabled && _trackingClient != null;
+        }
+
+        public bool IsRotationActive()
+        {
+            return IsTrackingEnabled() && _trackingMode != TrackingMode.PositionOnly;
+        }
+
+        public bool IsPositionActive()
+        {
+            return IsTrackingEnabled() && _trackingMode != TrackingMode.RotationOnly && PositionEnabled;
         }
 
         public OpenTrackClient? GetTrackingClient()

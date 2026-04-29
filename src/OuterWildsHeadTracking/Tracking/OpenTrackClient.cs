@@ -32,9 +32,10 @@ namespace OuterWildsHeadTracking.Tracking
             _port = port;
         }
 
-        public bool Initialize()
+        public bool Initialize(Action<string>? log = null)
         {
             _receiver = new CameraUnlock.Core.Protocol.OpenTrackReceiver();
+            if (log != null) _receiver.Log = log;
 
             // Initialize processor with smoothing disabled (SimpleCameraPatch does quaternion Slerp)
             _processor = new TrackingProcessor

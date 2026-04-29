@@ -352,12 +352,19 @@ namespace OuterWildsHeadTracking.Camera.Core
                 _smoothedPitch = SmoothingUtils.Smooth(_smoothedPitch, pitch, smoothing, deltaTime);
                 _smoothedRoll = SmoothingUtils.Smooth(_smoothedRoll, roll, smoothing, deltaTime);
 
+                if (!mod.IsRotationActive())
+                {
+                    _smoothedYaw = 0f;
+                    _smoothedPitch = 0f;
+                    _smoothedRoll = 0f;
+                }
+
                 _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
                     _smoothedYaw, _smoothedPitch, _smoothedRoll);
 
                 // Position tracking: apply to localPosition so markers see the offset.
                 // Cleaned up in FixedUpdate_Prefix/Update_Prefix before game logic.
-                if (HeadTrackingMod.PositionEnabled && trackingClient != null && _cameraTransform != null)
+                if (mod.IsPositionActive() && trackingClient != null && _cameraTransform != null)
                 {
                     var headRotQ = QuaternionUtils.FromYawPitchRoll(
                         _smoothedYaw, _smoothedPitch, _smoothedRoll);
