@@ -8,6 +8,11 @@ platforms = ["win-64", "osx-arm64", "linux-64"]
 [tasks]
 sync = "git submodule update --remote cameraunlock-core"
 
+# No-op: Outer Wilds ships through OWML's installer ecosystem and has no
+# vendored loader to refresh. Defined so the launcher's update-deps macro
+# succeeds uniformly across the catalogue.
+update-deps = "echo No vendored dependencies to update - OWML mod."
+
 # Full release workflow - creates tag and pushes to trigger CI release
 # Usage: pixi run release <major|minor|patch|X.Y.Z>
 # Example: pixi run release patch
