@@ -81,7 +81,7 @@ Non-negotiable:
 2. **Zero impact on game logic.** Raycasts, physics, hitboxes, and aim direction are identical whether tracking is on or off.
 3. **Fail fast, never fail silent.** No swallowed exceptions, no silent fallbacks.
 4. **No over-engineering.** Don't add features, abstractions, or error handling beyond what's asked.
-5. **Easy to churn out.** New mod from scratch to working ZIP in a single session — don't fight the shared patterns.
+5. **Easy to churn out.** New mod from scratch to working ZIP in a single session - don't fight the shared patterns.
 
 ---
 
@@ -92,7 +92,7 @@ Non-negotiable:
 - **CRLF for .cmd files.** `Write` outputs LF. After writing any `.cmd`/`.bat`, run `unix2dos <file>`.
 - **cameraunlock-core** is the shared submodule name. DLLs are `CameraUnlock.Core.*`.
 - **Never commit:** `.claude/`, `.pixi/`, `bin/`, `obj/`, `libs/`, `release/`, `.vs/`, `*.user`.
-- **Never use em-dashes (—).** Use normal dashes (-) only. Applies everywhere: code, comments, docs, commit messages, chat.
+- **Never use em-dashes (-).** Use normal dashes (-) only. Applies everywhere: code, comments, docs, commit messages, chat.
 
 ---
 
@@ -108,7 +108,7 @@ OpenTrack / Phone App (UDP:4242, variable sample rate)
         → ViewMatrixModifier   [Core.Unity]        camera.worldToCameraMatrix (or C++ equivalent)
 ```
 
-**Sample rate is not fixed.** The interpolator estimates the incoming sample interval via EMA (`IntervalBlend = 0.3f`, clamped 0.001–0.2s). Tracker rate can be anything — 30, 60, 90, 120Hz, or irregular — and the interpolator bridges it to frame rate with velocity extrapolation (`MaxExtrapolationFraction = 0.5f`) to eliminate flat spots on high-refresh displays. The old "30Hz" constant exists only as the seed estimate until real samples arrive.
+**Sample rate is not fixed.** The interpolator estimates the incoming sample interval via EMA (`IntervalBlend = 0.3f`, clamped 0.001–0.2s). Tracker rate can be anything - 30, 60, 90, 120Hz, or irregular - and the interpolator bridges it to frame rate with velocity extrapolation (`MaxExtrapolationFraction = 0.5f`) to eliminate flat spots on high-refresh displays. The old "30Hz" constant exists only as the seed estimate until real samples arrive.
 
 ### Core Library Assemblies (C#)
 
@@ -127,11 +127,11 @@ Headers mirror the C# types: `math/smoothing_utils.h`, processing/interpolator p
 
 ### Key Entry Points
 
-- **`StaticHeadTrackingCore`** — static singleton. `Initialize()`, `Update()`, `GetProcessedPose()`.
-- **`SelfHealingModBase`** — MonoBehaviour base that survives scene changes via `DontDestroyOnLoad` + auto-recreate.
-- **`ViewMatrixModifier`** — `ApplyHeadRotation(cam, yaw, pitch, roll)`. `ApplyHeadRotationDecomposed()` for world-space yaw.
-- **`AimDecoupler`** — `ComputeAimDirectionLocal()` inverts tracking rotation for stable aim vector.
-- **`ScreenOffsetCalculator`** — FOV-based tangent projection for reticle/UI compensation.
+- **`StaticHeadTrackingCore`** - static singleton. `Initialize()`, `Update()`, `GetProcessedPose()`.
+- **`SelfHealingModBase`** - MonoBehaviour base that survives scene changes via `DontDestroyOnLoad` + auto-recreate.
+- **`ViewMatrixModifier`** - `ApplyHeadRotation(cam, yaw, pitch, roll)`. `ApplyHeadRotationDecomposed()` for world-space yaw.
+- **`AimDecoupler`** - `ComputeAimDirectionLocal()` inverts tracking rotation for stable aim vector.
+- **`ScreenOffsetCalculator`** - FOV-based tangent projection for reticle/UI compensation.
 
 ---
 
@@ -151,7 +151,7 @@ Used by: Subnautica, Green Hell, Gone Home, Firewatch.
 4. Roll is inverted in the Euler variant: `Quaternion.Euler(pitch, yaw, -roll)`.
 5. For world-space yaw (prevents leaning artifacts at extreme angles), use `ApplyHeadRotationDecomposed`.
 
-`camera.transform.forward` remains the aim direction — aim decoupling falls out naturally.
+`camera.transform.forward` remains the aim direction - aim decoupling falls out naturally.
 
 ### Transform Save/Restore (alternative, Unity)
 
@@ -177,7 +177,7 @@ Postfix: reapply tracking
 Used by: dying-light-2, resident-evil-requiem, witcher-3.
 
 1. **Pre-hook (before game's camera update):** restore clean camera state.
-2. **Game update runs** — weapon aim, projectile spawning, AI vision, physics all read the clean rotation.
+2. **Game update runs** - weapon aim, projectile spawning, AI vision, physics all read the clean rotation.
 3. **Post-hook:** save the game's intended rotation.
 4. **Render-phase hook** (e.g., `OnPostBeginRendering`): inject head rotation into the view matrix, keeping the head-tracked position.
 
@@ -230,7 +230,7 @@ Player head moves the view; mouse/controller controls aim. Projectiles must land
 
 The game's aim/projectile/raycast code must read **clean camera rotation** (the direction the player is actually aiming). The player sees the **head-tracked** camera. The reticle is then drawn at the screen position where the clean aim direction projects into the head-tracked view.
 
-This means: **projectiles fly straight along clean aim, and we move the reticle to match — never the other way around.**
+This means: **projectiles fly straight along clean aim, and we move the reticle to match - never the other way around.**
 
 ### Unity implementation
 
@@ -256,7 +256,7 @@ Pre/post hook sandwich around the game's camera update restores the clean rotati
 **Do NOT project with per-axis yaw/pitch tangents.** The naive formula
 `ndc_x = -tan(yaw) / tan(fov_h/2)`, `ndc_y = tan(pitch) / tan(fov_v/2)`
 is roll-unaware and drifts horizontally the moment roll is combined
-with pitch — because once the head is tilted, the pitch axis stops
+with pitch - because once the head is tilted, the pitch axis stops
 being screen-vertical. Use spherical decomposition into the aim
 direction, apply roll in direction space, *then* perspective-divide:
 
@@ -265,7 +265,7 @@ ax = -sin(yaw)
 ay =  sin(pitch) * cos(yaw)   // `cos(yaw)` prevents orbiting on combined yaw+pitch
 az =  cos(pitch) * cos(yaw)
 
-// rotate (ax, ay) by roll in DIRECTION space, not screen space —
+// rotate (ax, ay) by roll in DIRECTION space, not screen space -
 // screen-space roll rotation introduces FOV/aspect distortion.
 rx = ax * cos(roll) - ay * sin(roll)
 ry = ax * sin(roll) + ay * cos(roll)
@@ -297,7 +297,7 @@ behaves oddly with roll involved, the signs are off.
 - Interaction text (Gone Home): move label to follow crosshair.
 - Player mask/helmet (Subnautica): apply inverse H to keep screen-fixed.
 - Map markers (Outer Wilds): temporarily apply/remove tracking in HUD update prefix/postfix.
-- World-anchored GUI markers (RE:Requiem): roll-aware reprojection — when head roll exceeds ~0.1°, apply inverse roll to anchor points before offsetting.
+- World-anchored GUI markers (RE:Requiem): roll-aware reprojection - when head roll exceeds ~0.1°, apply inverse roll to anchor points before offsetting.
 
 ### Crosshair Suppression
 
@@ -321,7 +321,7 @@ When drawing our own reticle, hide the game's built-in crosshair:
 
 ### Smoothing Model
 
-- **Baseline floor 0.15** (`SmoothingUtils.BaselineSmoothing` / `kBaselineSmoothing`). `GetEffectiveSmoothing()` enforces this minimum on every connection. Below the floor, high-refresh displays show jitter — particularly on wireless/WiFi trackers. Do not remove this floor.
+- **Baseline floor 0.15** (`SmoothingUtils.BaselineSmoothing` / `kBaselineSmoothing`). `GetEffectiveSmoothing()` enforces this minimum on every connection. Below the floor, high-refresh displays show jitter - particularly on wireless/WiFi trackers. Do not remove this floor.
 - **Frame-rate independent:** the exponential formula converges on identical visual latency regardless of frame rate. At 60Hz with smoothing=0.15, per-frame factor ≈ 0.4, settling in ~100–150ms. At 144Hz, per-frame factor is smaller but cumulative settling time is unchanged.
 - **User SmoothingFactor:** 0.0 = minimum (floor of 0.15 applied); 1.0 = heavy (~5s settling).
 - **PoseInterpolator:** sits between receiver and processor. Active whenever tracking smoothing ≥ 0.001. EMA-estimates the tracker's true sample interval so any rate works. Velocity extrapolation up to half a sample period past the latest known position eliminates flat spots at high refresh rates.
@@ -336,7 +336,7 @@ When drawing our own reticle, hide the game's built-in crosshair:
 
 - **Hold by default:** display last known pose (no snap to center).
 - **Freshness:** `IsDataFresh(maxAgeMs = 500)` on `TrackingPose` and `OpenTrackReceiver`.
-- **Resume:** smoothing blends back naturally — never snap.
+- **Resume:** smoothing blends back naturally - never snap.
 - **Optional fade + auto-recenter** via `TrackingLossHandler` (`Core.Unity`): hold for `FadeDelaySeconds` (0.5s), exponential fade to identity at `FadeSpeed` (2.0), auto-recenter after `RecenterThresholdFrames` (60) frames of no data. Outer Wilds is the canonical user. Mods that don't instantiate `TrackingLossHandler` just hold.
 
 ---
@@ -531,17 +531,17 @@ Project references use the submodule (never NuGet for core libs). Game DLL refer
 
 **Nexus (extract to game folder):** `<ModName>-v<version>-nexus.zip` - only the deploy-path subtree containing the DLLs. No vendored loader (Nexus users manage their own).
 
-**MUST NOT be in release ZIPs:** `pixi.toml`, `modules/`, `bin/`, `obj/`, `libs/`, `.claude/`, `.pixi/`, any `.ps1`/`.bat`. Vendor dirs ship the loader zip + LICENSE + README.md only — no scripts.
+**MUST NOT be in release ZIPs:** `pixi.toml`, `modules/`, `bin/`, `obj/`, `libs/`, `.claude/`, `.pixi/`, any `.ps1`/`.bat`. Vendor dirs ship the loader zip + LICENSE + README.md only - no scripts.
 
 ### Shared Packager
 
 `cameraunlock-core/scripts/package-bepinex-mod.ps1`: params `-ModName`, `-CsprojPath`, `-BuildOutputDir`, `-ModDlls`, `-ProjectRoot`, `-CreateNexusZip`. Output: `release/`.
 
-### install.cmd / uninstall.cmd — Unified Launcher Contract
+### install.cmd / uninstall.cmd - Unified Launcher Contract
 
-**Every mod in scope** (bioshock-remastered, dying-light-2, gone-home, green-hell, obra-dinn, peak, resident-evil-requiem, subnautica — and every new BepInEx/MelonLoader/ASI/REFramework/Cecil/shim mod) **ships install.cmd and uninstall.cmd with identical CLI semantics**. The CameraUnlock launcher drives them programmatically; the contract below is what the launcher relies on, and what a human running the `.cmd` by hand also gets.
+**Every mod in scope** (bioshock-remastered, dying-light-2, gone-home, green-hell, obra-dinn, peak, resident-evil-requiem, subnautica - and every new BepInEx/MelonLoader/ASI/REFramework/Cecil/shim mod) **ships install.cmd and uninstall.cmd with identical CLI semantics**. The CameraUnlock launcher drives them programmatically; the contract below is what the launcher relies on, and what a human running the `.cmd` by hand also gets.
 
-Outer Wilds is the one explicit exception — it ships through OWML's own installer ecosystem and does not participate in this contract.
+Outer Wilds is the one explicit exception - it ships through OWML's own installer ecosystem and does not participate in this contract.
 
 #### CLI surface
 
@@ -551,10 +551,10 @@ uninstall.cmd [GAME_PATH] [/y] [/force]
 ```
 
 - **GAME_PATH** (optional, positional): Explicit game install root. Wins over all auto-detection. Must be an existing directory; if not, script errors out.
-- **`/y`** (aliases: `-y`, `--yes`, `/Y`): Non-interactive mode. Skip every `pause`, prompt, and "type install to continue" gate. Error-exit paths still print the diagnostic — they just don't pause. The launcher always passes `/y`; users running by hand rarely do.
+- **`/y`** (aliases: `-y`, `--yes`, `/Y`): Non-interactive mode. Skip every `pause`, prompt, and "type install to continue" gate. Error-exit paths still print the diagnostic - they just don't pause. The launcher always passes `/y`; users running by hand rarely do.
 - **`/force`** (uninstall only; aliases: `--force`, `/Force`): Remove the mod loader/framework even if the state file says `installed_by_us: false`. Never touches anything outside the loader's own directories.
 
-**Parsing is order-independent and case-insensitive.** The first positional arg that resolves to an existing directory is `GAME_PATH`; everything else must be a recognised flag. Unknown flags are a hard error (exit 2) — fail fast, don't silently ignore.
+**Parsing is order-independent and case-insensitive.** The first positional arg that resolves to an existing directory is `GAME_PATH`; everything else must be a recognised flag. Unknown flags are a hard error (exit 2) - fail fast, don't silently ignore.
 
 The legacy positional `UNATTENDED` arg-2 pattern from earlier template revisions is removed. `/y` replaces it.
 
@@ -574,15 +574,15 @@ The launcher treats anything non-zero as "surface the last ~20 lines of stderr t
 2. Resolve `GAME_PATH`: explicit arg wins; otherwise call `find-game.ps1` shim reading `cameraunlock-core/data/games.json` by `GAME_ID`.
 3. Check game isn't running. Exit 1 if it is.
 4. Check loader presence via the canonical marker file (see Loader inventory table). If absent:
-   - Extract `vendor/<loader-slug>/<loader>.zip` (the committed vendored copy) directly to the correct location. install.cmd never reaches out to the network — see Vendoring section.
+   - Extract `vendor/<loader-slug>/<loader>.zip` (the committed vendored copy) directly to the correct location. install.cmd never reaches out to the network - see Vendoring section.
    - If the vendored zip is missing, exit 1 with `"installer ZIP is corrupt, re-download"`.
    - Set `framework.installed_by_us = true` for the state file.
-5. If loader was already present: log `"Existing <Loader> detected, skipping loader install, deploying plugin only."` and set `installed_by_us = false` — **but preserve `true` if the existing state file already says `true`** (we're updating a mod we previously installed; don't demote the flag).
+5. If loader was already present: log `"Existing <Loader> detected, skipping loader install, deploying plugin only."` and set `installed_by_us = false` - **but preserve `true` if the existing state file already says `true`** (we're updating a mod we previously installed; don't demote the flag).
 6. Loader init gate:
    - `/y` mode: print `"Loader installed. It will initialize on first game launch."` and continue. BepInEx/MelonLoader/REFramework all self-init on first launch whether plugins are present or not.
    - Interactive mode (loader was absent before this run): show the "run the game once, then type install to continue" gate.
    - Interactive mode (loader already present): no gate, proceed.
-7. Deploy mod files to the deploy path (framework-dependent — see inventory table).
+7. Deploy mod files to the deploy path (framework-dependent - see inventory table).
 8. Write updated `.headtracking-state.json`.
 9. Final `pause` only if `/y` not set.
 
@@ -602,7 +602,7 @@ The launcher treats anything non-zero as "surface the last ~20 lines of stderr t
 
 #### State file: `.headtracking-state.json`
 
-Lives at the **game install root** (the directory resolved as `GAME_PATH`, not a subfolder). One file per game, shared across all CameraUnlock mods for that game — in practice we only ever ship one per game, so no cross-mod collisions today. If that ever changes, the schema grows a `mods: []` array.
+Lives at the **game install root** (the directory resolved as `GAME_PATH`, not a subfolder). One file per game, shared across all CameraUnlock mods for that game - in practice we only ever ship one per game, so no cross-mod collisions today. If that ever changes, the schema grows a `mods: []` array.
 
 Canonical schema:
 
@@ -648,16 +648,16 @@ Each mod's `install.cmd` dispatches to exactly one `:install_<loader>` subroutin
 | Mono.Cecil patcher | gone-home | `mono-cecil` | `<Managed>/Assembly-CSharp.dll.original` | Restore `.original` over `Assembly-CSharp.dll`, delete `.original`, delete `Mono.Cecil.dll` |
 | Ultimate ASI Loader | dying-light-2 | `asi-loader` | `<exe-dir>/winmm.dll` (renamed from `dinput8.dll`) | `winmm.dll` (or `dinput8.dll`), any `scripts/` stub created by the loader |
 | REFramework | resident-evil-requiem | `reframework` | `dinput8.dll` + `reframework/` at game root | `dinput8.dll`, `reframework/` |
-| None (shim-only) | bioshock-remastered | — | N/A (the mod DLL *is* the shim — `xinput1_3.dll`) | Just the mod DLL |
+| None (shim-only) | bioshock-remastered | - | N/A (the mod DLL *is* the shim - `xinput1_3.dll`) | Just the mod DLL |
 
-**Shim-only mods** (bioshock-remastered and any future xinput/dxgi shim): `framework.type: "None"`, `framework.installed_by_us: false`. `/force` on uninstall is a no-op for framework removal — the mod DLL always comes out regardless.
+**Shim-only mods** (bioshock-remastered and any future xinput/dxgi shim): `framework.type: "None"`, `framework.installed_by_us: false`. `/force` on uninstall is a no-op for framework removal - the mod DLL always comes out regardless.
 
 #### Template layout in cameraunlock-core
 
 Source of truth lives at `cameraunlock-core/scripts/templates/`:
 
 ```
-install.cmd             # BepInEx variant (default — most mods)
+install.cmd             # BepInEx variant (default - most mods)
 install-melonloader.cmd
 install-cecil.cmd
 install-asi.cmd
@@ -671,7 +671,7 @@ Per-mod `<mod>/scripts/install.cmd` and `uninstall.cmd`:
 - Edit **only the CONFIG BLOCK** (`GAME_ID`, `MOD_DISPLAY_NAME`, `MOD_DLLS`, `MOD_INTERNAL_NAME`, `MOD_VERSION`, `MOD_CONTROLS`, plus any loader-specific vars like `BEPINEX_ARCH`, `MANAGED_SUBFOLDER`, `BEPINEX_SUBFOLDER`, etc.).
 - Never modify logic outside the CONFIG BLOCK. If you need to, fix the template and re-sync all mods.
 
-After editing a `.cmd`, **always run `unix2dos`** on it (the Write tool outputs LF; `.cmd` must be CRLF or it silently fails on Windows — this is already in Hard Rules, reiterated here because it's the #1 regression source).
+After editing a `.cmd`, **always run `unix2dos`** on it (the Write tool outputs LF; `.cmd` must be CRLF or it silently fails on Windows - this is already in Hard Rules, reiterated here because it's the #1 regression source).
 
 #### Canonical arg-parser block
 
@@ -779,8 +779,9 @@ Each mod has its own `.github/workflows/build.yml` and `release.yml` in its own 
 - `paths-ignore` drops pure docs/LICENSE changes so they don't burn CI minutes.
 - `if: ${{ !startsWith(github.event.head_commit.message, 'Release v') }}` on the job to skip double-building when `release.ps1` lands its version-bump commit - `release.yml` handles that path.
 - Tag pushes (`v*.*.*`) are handled exclusively by `release.yml`. Do not widen `build.yml`'s `push:` section to include tags.
+- Do not add `schedule:` or `workflow_dispatch:`. Per-push artifacts with 14-day retention are the agreed cadence; converting to cron-nightlies or manual dispatch is a separate decision, not a drift to make casually.
 
-**`build.yml` must produce a usable install artifact.** After the "Verify build outputs" step, run the mod's packaging script and upload the installer ZIP:
+**`build.yml` must produce a usable install artifact.** After the "Verify build outputs" step, run the mod's packaging script and upload the installer ZIP. **A `build.yml` that lints, builds, and verifies but does not upload an artifact is incomplete.** Before committing any change to `build.yml` (or authoring a new one), grep the file for `upload-artifact` and confirm it's present - this is the most common drift.
 
 ```yaml
 - name: Package installer
@@ -849,7 +850,7 @@ The narrow exception is loaders with licenses too restrictive to vendor (none to
 │   └── README.md              # tag, commit SHA (nightlies), upstream URL, SHA-256, fetched_at
 ```
 
-`fetch-latest.ps1` inside `vendor/<loader>/` is gone — it was only needed by the old install-time fetch path. Don't re-add it.
+`fetch-latest.ps1` inside `vendor/<loader>/` is gone - it was only needed by the old install-time fetch path. Don't re-add it.
 
 ### Required pixi.toml wiring
 
@@ -974,16 +975,16 @@ MIT, copyright `itsloopyo / CameraUnlock`.
 | Submodule path | `cameraunlock-core` | |
 | Release ZIP | `<ModName>-v<version>-installer.zip` / `-nexus.zip` | |
 
-Existing mods have inconsistent GUIDs (`com.headtracking.obradinn`, `com.<game>.headtracking`). New mods use the standard above. Don't rename existing GUIDs — it breaks user configs.
+Existing mods have inconsistent GUIDs (`com.headtracking.obradinn`, `com.<game>.headtracking`). New mods use the standard above. Don't rename existing GUIDs - it breaks user configs.
 
 ---
 
 ## Reflection Best Practices
 
 - **Cache everything.** Look up `Type` / `FieldInfo` / `PropertyInfo` / `MethodInfo` once into static fields.
-- **`GameTypeResolver` pattern** — lazy-initialized cached lookups per game type.
+- **`GameTypeResolver` pattern** - lazy-initialized cached lookups per game type.
 - **Find via `AppDomain.CurrentDomain.GetAssemblies()` + `asm.GetType(name)`.** Don't hardcode assembly names.
-- **Graceful degradation** — if a type isn't found, log once and disable the feature; don't crash.
+- **Graceful degradation** - if a type isn't found, log once and disable the feature; don't crash.
 - **Null checks (Mono compat):** `ReferenceEquals(x, null)` for plain .NET; `x == null` for Unity objects (catches destroyed-but-not-GC'd). Never `is null` pattern on Unity objects.
 - **Harmony `FastFieldRef`** for hot-path field access.
 
@@ -991,11 +992,11 @@ Existing mods have inconsistent GUIDs (`com.headtracking.obradinn`, `com.<game>.
 
 ## Performance
 
-- **Cache `Camera.main`** — it calls `FindGameObjectWithTag` internally. Cache per-frame or per-30-frames.
+- **Cache `Camera.main`** - it calls `FindGameObjectWithTag` internally. Cache per-frame or per-30-frames.
 - **Rate-limit game state detection** to 0.1s or 30 frames.
 - **No allocations in hot paths** (OnPreCull/LateUpdate/Update).
-- **Multi-camera dedup** — games call `Camera.onPreCull` multiple times per frame (shadows, reflections, secondary cams). Use `PerFrameCache` (`Core.Unity/Utilities`) which keys on `Time.frameCount` so first-call-per-frame wins; subsequent calls reuse the cached result.
-- **Lock-free receiver** — `OpenTrackReceiver` uses `volatile` reads on `_rotationPitch/_rotationYaw/_rotationRoll/_isRemoteConnection` on the hot path.
+- **Multi-camera dedup** - games call `Camera.onPreCull` multiple times per frame (shadows, reflections, secondary cams). Use `PerFrameCache` (`Core.Unity/Utilities`) which keys on `Time.frameCount` so first-call-per-frame wins; subsequent calls reuse the cached result.
+- **Lock-free receiver** - `OpenTrackReceiver` uses `volatile` reads on `_rotationPitch/_rotationYaw/_rotationRoll/_isRemoteConnection` on the hot path.
 
 ---
 
@@ -1018,29 +1019,29 @@ Existing mods have inconsistent GUIDs (`com.headtracking.obradinn`, `com.<game>.
 
 Lessons from hooking The Witcher 3 and RE:Requiem. Applies to any C++ game without source access.
 
-### Phase 1 — Infrastructure
+### Phase 1 - Infrastructure
 
 1. ASI Loader + DXGI Present hook. Create a temp D3D11 device to read `IDXGISwapChain::Present` from the vtable (index 8). Works for DX12 too since DXGI is shared. Hook with MinHook for a per-frame callback.
 2. Validate stability with just Present + UDP + hotkey poller before adding camera hooks.
 
-### Phase 2 — Find the Camera via RTTI
+### Phase 2 - Find the Camera via RTTI
 
 1. Scan `.rdata` for RTTI `_TypeDescriptor` strings matching likely class names (`CCustomCamera`, `CCamera`, `CCameraDirector`, `CRenderCamera`, `PlayerCameraController`, …).
 2. Walk `_TypeDescriptor → _RTTICompleteObjectLocator → vtable` (COL is at `vtable[-1]`).
 3. Log the first 8–10 vtable entries per camera class.
 
-### Phase 3 — Hook a Virtual Function
+### Phase 3 - Hook a Virtual Function
 
-**Do not backward-prologue-scan from a known instruction.** That found a function only called during loading — wasted hours.
+**Do not backward-prologue-scan from a known instruction.** That found a function only called during loading - wasted hours.
 
 1. Dump vtable entries 0–9 (entries beyond are often RTTI metadata, identifiable by absurd values).
-2. Hook MinHook from `vfunc[2]` onward — `[0]` is typically destructor/RTTI, `[1]` is type info. Per-frame Update/Tick tends to be `[2]`–`[7]`.
-3. **Preserve the return value.** Use `uintptr_t` return, not `void` — declaring `void` when the real function returns a value corrupts RAX and causes visual corruption (screen split, etc.).
+2. Hook MinHook from `vfunc[2]` onward - `[0]` is typically destructor/RTTI, `[1]` is type info. Per-frame Update/Tick tends to be `[2]`–`[7]`.
+3. **Preserve the return value.** Use `uintptr_t` return, not `void` - declaring `void` when the real function returns a value corrupts RAX and causes visual corruption (screen split, etc.).
 4. Log `this` and call frequency. If not called after 15s, try the next vfunc.
 
-### Phase 4 — Map the Camera Object
+### Phase 4 - Map the Camera Object
 
-1. Dump `this + 0x000..0x200` as hex + float pairs, ONCE (guard with a counter). Do NOT follow unknown pointers — dereferencing into heap destabilizes the game.
+1. Dump `this + 0x000..0x200` as hex + float pairs, ONCE (guard with a counter). Do NOT follow unknown pointers - dereferencing into heap destabilizes the game.
 2. Identify fields by value shape:
    - **Pointers:** large hex, absurd as floats.
    - **Position:** 3–4 floats with world-coordinate magnitudes.
@@ -1050,7 +1051,7 @@ Lessons from hooking The Witcher 3 and RE:Requiem. Applies to any C++ game witho
 3. Witcher 3 REDengine layout (for reference):
    - `+0x000` vtable, `+0x060` position (xyzw=1), `+0x080` roll, `+0x084` pitch, `+0x088` yaw, `+0x0E8` FOV, `+0x140` 4x4 matrix (ineffective).
 
-### Phase 5 — Modify Angles (Delta Approach)
+### Phase 5 - Modify Angles (Delta Approach)
 
 ```cpp
 // Pre: undo last frame's head tracking
@@ -1065,13 +1066,13 @@ s_prevDYaw = dYaw; s_prevDPitch = dPitch; s_prevDRoll = dRoll;
 return ret;
 ```
 
-Do NOT save/restore absolute angles — fights the game's mouse accumulator, mouse gets stuck at pitch clamp boundaries. Store the actual applied delta (with inversions baked in), otherwise undo and apply have mismatched signs.
+Do NOT save/restore absolute angles - fights the game's mouse accumulator, mouse gets stuck at pitch clamp boundaries. Store the actual applied delta (with inversions baked in), otherwise undo and apply have mismatched signs.
 
 ### Pitfalls
 
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
-| Scanning heap memory | Crashes 1–30s after scan | Never scan heap — use RTTI + vfunc hooks, objects come from `this` |
+| Scanning heap memory | Crashes 1–30s after scan | Never scan heap - use RTTI + vfunc hooks, objects come from `this` |
 | Dereferencing pointers found in `.data` | Crashes shortly after | Don't dereference unknown pointers |
 | `void` hook on non-void function | Screen split, visual corruption | Use `uintptr_t`, preserve RAX |
 | Backward prologue scan | Hooks a load-only function | Use vtable vfuncs |
