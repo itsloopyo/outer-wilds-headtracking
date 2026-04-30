@@ -20,19 +20,17 @@ $projectDir = Split-Path -Parent $scriptDir
 Import-Module (Join-Path $projectDir "cameraunlock-core\powershell\ReleaseWorkflow.psm1") -Force
 
 $artifactPaths = @(
-    "src/"
+    "src/OuterWildsHeadTracking/",
+    "cameraunlock-core"
 )
 
-# Get commits since last tag
 $lastTag = git describe --tags --abbrev=0 2>$null
 if ($LASTEXITCODE -ne 0) {
-    $commitRange = $null
     Write-Host "(no previous tags found - showing all commits)" -ForegroundColor Gray
-    $commits = git log --pretty=format:"%s" --reverse --no-merges -- $artifactPaths
+    $commits = Get-CommitSubjectsWithSubmoduleExpansion -CommitRange "HEAD" -UseAllCommits -ArtifactPaths $artifactPaths
 } else {
-    $commitRange = "$lastTag..HEAD"
     Write-Host "(changes since $lastTag)" -ForegroundColor Gray
-    $commits = git log $commitRange --pretty=format:"%s" --reverse --no-merges -- $artifactPaths
+    $commits = Get-CommitSubjectsWithSubmoduleExpansion -CommitRange "$lastTag..HEAD" -ArtifactPaths $artifactPaths
 }
 
 if (-not $commits) {

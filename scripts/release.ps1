@@ -100,7 +100,13 @@ Update-ManifestVersion -ManifestPath $manifestPath -Version $Version
 # Step 2: Generate CHANGELOG
 Write-Host "Generating CHANGELOG from commits..." -ForegroundColor Cyan
 $changelogPath = Join-Path $projectDir "CHANGELOG.md"
-New-ChangelogFromCommits -ChangelogPath $changelogPath -Version $Version -ArtifactPaths @("src/")
+New-ChangelogFromCommits `
+    -ChangelogPath $changelogPath `
+    -Version $Version `
+    -ArtifactPaths @(
+        "src/OuterWildsHeadTracking/",
+        "cameraunlock-core"
+    )
 
 # Step 3: Commit
 Write-Host "Committing release..." -ForegroundColor Cyan

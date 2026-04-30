@@ -130,7 +130,8 @@ jobs:
         shell: pwsh
         run: |
           $artifactPaths = @(
-            "src/OuterWildsHeadTracking/"
+            "src/OuterWildsHeadTracking/",
+            "cameraunlock-core"
           )
 
           & cameraunlock-core/scripts/generate-release-notes.ps1 `
