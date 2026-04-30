@@ -142,10 +142,10 @@ jobs:
 
           Write-Host "Package created" -ForegroundColor Green
 
-      - name: Upload installer artifact
+      - name: Upload mod artifact
         uses: actions/upload-artifact@v7
         with:
-          name: OuterWildsHeadTracking-installer
-          path: release/*-installer.zip
+          name: OuterWildsHeadTracking
+          path: release/OuterWildsHeadTracking-*.zip
           retention-days: 14
           if-no-files-found: error
