@@ -18,6 +18,7 @@ namespace OuterWildsHeadTracking.Tracking
     {
         private CameraUnlock.Core.Protocol.OpenTrackReceiver? _receiver;
         private TrackingProcessor? _processor;
+        private PoseInterpolator? _poseInterpolator;
         private PositionProcessor? _positionProcessor;
         private PositionInterpolator? _positionInterpolator;
         private readonly int _port;
@@ -44,6 +45,7 @@ namespace OuterWildsHeadTracking.Tracking
                 Deadzone = DeadzoneSettings.None
             };
 
+            _poseInterpolator = new PoseInterpolator();
             _positionProcessor = new PositionProcessor();
             _positionInterpolator = new PositionInterpolator();
             UpdateProcessorSettings();
@@ -153,6 +155,7 @@ namespace OuterWildsHeadTracking.Tracking
             _receiver?.Dispose();
             _receiver = null;
             _processor = null;
+            _poseInterpolator = null;
             _positionProcessor = null;
             _positionInterpolator = null;
             _loggedConnection = false;
@@ -171,13 +174,14 @@ namespace OuterWildsHeadTracking.Tracking
         /// <returns>Processed rotation (Yaw, Pitch, Roll) in degrees, or null if no valid data.</returns>
         public ProcessedRotation? GetProcessedRotation(float deltaTime)
         {
-            if (_receiver == null || _processor == null || !_receiver.IsReceiving)
+            if (_receiver == null || _processor == null || _poseInterpolator == null || !_receiver.IsReceiving)
             {
                 return null;
             }
 
             var rawPose = _receiver.GetLatestPose();
-            var processed = _processor.Process(rawPose, deltaTime);
+            var interpolatedPose = _poseInterpolator.Update(rawPose, deltaTime);
+            var processed = _processor.Process(interpolatedPose, deltaTime);
 
             return new ProcessedRotation
             {
@@ -196,6 +200,7 @@ namespace OuterWildsHeadTracking.Tracking
             if (_processor == null) return;
             var pose = new TrackingPose(rawAngles.Yaw, rawAngles.Pitch, rawAngles.Roll, 0);
             _processor.RecenterTo(pose);
+            _poseInterpolator?.Reset();
             RecenterPosition();
         }
 
@@ -205,6 +210,7 @@ namespace OuterWildsHeadTracking.Tracking
         public void ResetProcessor()
         {
             _processor?.Reset();
+            _poseInterpolator?.Reset();
             ResetPositionProcessor();
         }
 

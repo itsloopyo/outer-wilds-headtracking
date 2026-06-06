@@ -1,5 +1,13 @@
 <!-- managed by Lab - edit via Agents in the sidebar; changes here are overwritten on the next sync -->
 
+<!-- agent: Agents and skills -->
+If you need to fix issues in or expand on AGENTS.md or any skills, please note that the ones in this repo are machine generated, the authoritative sources where they must be edited are /c/data/agents and /c/data/skills
+
+
+<!-- agent: Be awesome -->
+Strive for perfection in all your work
+
+
 <!-- agent: Code quality minimums -->
 ## Code quality minimums
 
@@ -54,10 +62,41 @@ aliases. Backwards compatibility is for shipped public APIs (see the
 Libraries category rule); internal scaffolding gets cut clean.
 
 
+<!-- agent: gitignore -->
+.lab, .claude, our skills, agents.md/claude.md and any MCP servers should be added to the project's .gitignore so they are not tracked in git.
+
+
+<!-- agent: Lab Notes -->
+If there is important project-specific information, it will be found in a .lab/NOTES.md - read this file at the start of each session should it exist.
+
+
 <!-- agent: Pixi rules -->
 In pixi files:
 
 The `project` field is deprecated. Use `workspace` instead.
+
+
+<!-- agent: Debugging -->
+Don't be shy to use Ghidra to help us on our quest to crowbar head tracking into games that aren't built for it. Headless if possible - feel free to run entirely headless, or failing that, write scripts we can execute in Jython. Note, Ghidra is installed, when I run it I run C:\ProgramData\chocolatey\lib\ghidra\tools\ghidra_12.0_PUBLIC\ghidraRun.bat
+
+Similarly ilspy/ilspycmd is installed, and should be used to make our lives easier when working on Unity titles.
+
+pe-sieve64 is present in /c/bin
+
+## Autonomy when a mod "isn't working in game"
+
+When doing the initial build of a mod, or when the user reports "no head tracking in game" / "check logs" / similar on a head tracking mod, do NOT stop to ask what to do next. The flow is fixed; drive it autonomously and only surface a question when genuinely blocked (missing input, ambiguous game build, decision only the user can make).
+
+Default flow for "mod is being created brand new"/"mod isn't working":
+
+1. **Inspect mod state first.** Read `src/dllmain.cpp` (or equivalent entry) and the build output. If the entry file is a bare scaffold (empty `DllMain`, no hooks, no logger) say so plainly and skip to step 3 - there is nothing to debug, the implementation hasn't been written.
+2. **Verify the loader is actually engaging** before any RE work. Add a minimal `DLL_PROCESS_ATTACH` logger that writes `<ModName>.log` next to the game EXE. Build, deploy, launch the game headless if the game supports it, wait, kill the process, read the log. Do this without asking. Five minutes of work eliminates "is the ASI/BepInEx/MelonLoader/REFramework plugin even loading" as a variable.
+   - Launch headless / unattended where possible (the game's own `-batchmode`, Steam `steam://run/<appid>`, or just `Start-Process` + `Stop-Process` after a timeout). Capture stdout/stderr to files. Never ask the user to "launch the game and tell me what you see" if you can launch it yourself.
+   - If the game refuses to run headless or needs a real window, run it minimised / off-screen and use `Stop-Process` after a fixed timeout. Confirm via the log file, not by asking the user.
+3. **Begin reverse engineering immediately.** Once loader-presence is confirmed (or confirmed-empty for a scaffold), proceed straight into Ghidra / pattern scanning / pe-sieve64 / ilspycmd as appropriate for the engine. Headless Ghidra (`analyzeHeadless`) + Jython post-scripts is the default - do not open the GUI, do not ask whether to start RE work, just start. Pick the obvious next concrete step (locate the EXE, fingerprint it, import to a Ghidra project, run an analysis script for camera-matrix-shaped functions) and do it.
+4. **Surface progress, not decisions.** One-line status updates as you work ("loader confirmed via log line", "Ghidra import done, scanning for view matrix writers"). Stop and ask only when you hit something only the user can resolve - e.g. the game won't launch and needs a Steam login, or there are multiple plausible camera structs and you need them to wiggle their head to disambiguate.
+
+We ship lots of these mods. Each one that needs a back-and-forth "what should I do next?" costs the user attention they don't have. Default to acting, log what you did, keep moving.
 
 
 <!-- agent: Head tracking mod doctrine -->
@@ -90,9 +129,13 @@ Non-negotiable:
 - **Isolate tracking from game logic.** Either (1) modify `camera.worldToCameraMatrix` only (rendering path, game reads `camera.transform` for aim), or (2) modify `camera.transform` with save/restore so game logic sees the clean rotation. In C++ engines: save clean camera state before the game's update tick, inject tracking only in the render phase.
 - **Fail fast.** If something fails, let it throw.
 - **CRLF for .cmd files.** `Write` outputs LF. After writing any `.cmd`/`.bat`, run `unix2dos <file>`.
-- **cameraunlock-core** is the shared submodule name. DLLs are `CameraUnlock.Core.*`.
+- **cameraunlock-core** is the shared submodule name. DLLs are `CameraUnlock.Core.*`. It is from https://github.com/itsloopyo/cameraunlock-core, ../cameraunlock-core is the canonical version, that is where any changes must be made. All our mods ingest it from github.com/itsloopyo/cameraunlock-core
 - **Never commit:** `.claude/`, `.pixi/`, `bin/`, `obj/`, `libs/`, `release/`, `.vs/`, `*.user`.
 - **Never use em-dashes (-).** Use normal dashes (-) only. Applies everywhere: code, comments, docs, commit messages, chat.
+- We should endeavour to use as much of cameraunlock-core as benefits us. Similarly we should feed improvements, and shared code back into this library as our mods grow.
+- When creating a new mod from scratch, it should have the version number 0.0.0
+- When asking the user to confirm or check something you are changing, make your changes OBVIOUSLY visible. e.g. instead of "has the marker been repositioned 0.5m" try "is the marker moving from left to right by 5m in an animated loop"
+- Do not ask the user to perform superhuman feats like "turn your head 30degrees and hold for 3s" - do not rely on that level of accuracy from humans.
 
 ---
 
@@ -130,8 +173,9 @@ Headers mirror the C# types: `math/smoothing_utils.h`, processing/interpolator p
 - **`StaticHeadTrackingCore`** - static singleton. `Initialize()`, `Update()`, `GetProcessedPose()`.
 - **`SelfHealingModBase`** - MonoBehaviour base that survives scene changes via `DontDestroyOnLoad` + auto-recreate.
 - **`ViewMatrixModifier`** - `ApplyHeadRotation(cam, yaw, pitch, roll)`. `ApplyHeadRotationDecomposed()` for world-space yaw.
+- **`ViewMatrixTrackingController`** - full per-frame controller (pipeline, transitions, render hooks). `TryGetAimScreenOffset()` is the reticle projection to use with it - it mirrors the controller's own rotation composition per yaw mode.
 - **`AimDecoupler`** - `ComputeAimDirectionLocal()` inverts tracking rotation for stable aim vector.
-- **`ScreenOffsetCalculator`** - FOV-based tangent projection for reticle/UI compensation.
+- **`ScreenOffsetCalculator`** - FOV-based tangent projection for reticle/UI compensation. Only valid for camera hooks whose composition matches it (yaw-then-pitch, roll outermost) - see Reticle Compensation.
 
 ---
 
@@ -253,12 +297,56 @@ Pre/post hook sandwich around the game's camera update restores the clean rotati
 - No-reticle games: draw custom via `IMGUIReticle` (Core.Unity).
 - DL2/RE:Requiem: ImGui overlay with D3D hook, project using live FOV (read per-frame, smoothed).
 
-**Do NOT project with per-axis yaw/pitch tangents.** The naive formula
+**The projection is not a free choice - it is dictated by the camera
+composition.** The reticle formula must be derived from the exact rotation
+composition the camera modification applies: same operations, same order,
+same signs. Any formula derived from different assumptions agrees at small
+single-axis angles and then drifts on combined poses. Never pair a generic
+projection formula with a camera path without verifying they encode the same
+composition. The two recurring failure modes (both shipped and had to be
+fixed in the field):
+
+- **Roll handling depends on where roll sits in the composition.** If the
+  camera applies roll innermost - Unity's `Quaternion.Euler(pitch, yaw, -roll)`
+  as used by `ViewMatrixModifier.ApplyHeadRotation`, which matches
+  OpenTrack's own yaw-pitch-roll Euler convention - then the clean aim
+  point is invariant under roll: the projection must NOT rotate the offset
+  by roll at all, and pitch+roll moves the reticle purely vertically.
+  Rotating the offset by roll anyway produces a spurious horizontal drift
+  of ~tan(pitch)*sin(roll) (yapyap, 2026-06-03). Only when the camera
+  applies roll outermost (about the final view axis, typical for C++
+  engine hooks that write Euler angles into engine rotation state) does
+  the projected offset rotate with roll.
+
+- **World-space yaw must be conjugated through the camera's base rotation.**
+  In decomposed/world-yaw mode (`ApplyHeadRotationDecomposed`), head yaw
+  rotates about world up, so its screen-space effect depends on where the
+  game camera points: at the horizon it acts as local yaw; looking straight
+  down it is a pure spin about the view axis and the reticle must stay
+  fixed at centre. A projection that treats head yaw as camera-local sweeps
+  the reticle in a U-shaped arc when the player yaws while looking down
+  (yapyap, 2026-06-03).
+
+**Unity view-matrix mods: do not hand-roll the projection.** Use
+`ViewMatrixTrackingController.TryGetAimScreenOffset()` (Core.Unity). It
+projects the clean aim direction through the same composition the controller
+applies to the camera (`ViewMatrixModifier.ComputeAimDirectionInTrackedView`
+/ `...Decomposed`), switching automatically with the WorldSpaceYaw mode, and
+returns false when the aim point is behind the tracked view. A mod that
+cannot use the controller should still compute the offset by pushing the
+clean-aim view-space direction (0, 0, -1) through the same head-rotation
+matrix it left-multiplies onto the view matrix - not by re-deriving Euler
+formulas by hand.
+
+**For C++ / non-controller engines, do NOT project with per-axis yaw/pitch
+tangents.** The naive formula
 `ndc_x = -tan(yaw) / tan(fov_h/2)`, `ndc_y = tan(pitch) / tan(fov_v/2)`
 is roll-unaware and drifts horizontally the moment roll is combined
 with pitch - because once the head is tilted, the pitch axis stops
-being screen-vertical. Use spherical decomposition into the aim
-direction, apply roll in direction space, *then* perspective-divide:
+being screen-vertical. For camera hooks that compose yaw-then-pitch with
+roll outermost (the common C++ engine-hook shape), use spherical
+decomposition into the aim direction, apply roll in direction space,
+*then* perspective-divide:
 
 ```
 ax = -sin(yaw)
@@ -276,6 +364,9 @@ ndc_y = -ry / az / tan(fov_v/2)   // flip if NDC-y is positive-up
 
 Reference implementations: `cameraunlock-core/csharp/.../Aim/ScreenOffsetCalculator.cs`
 and the C++ equivalent `cameraunlock-core/cpp/.../crosshair_projection.h`.
+Both encode the composition above - check that your camera hook actually
+composes that way before reusing them (ViewMatrixModifier does not; see the
+roll-innermost failure mode above).
 
 **The roll sign must match between the camera modification and the
 reticle projection.** If your camera hook writes `-roll` into the
@@ -286,10 +377,18 @@ same-sign roll the game is actually rendering with. Using the raw
 OpenTrack roll in both places puts them 180° out of phase, so the
 reticle drifts horizontally on roll+pitch combinations. Concretely: if
 you apply `-roll` to the game, apply `+roll` (the inverse) when
-rotating `(ax, ay)` in the projection above. Easiest check: pure roll
-with pitch = 0 should leave the reticle at screen centre; pure pitch
-with roll = 0 should move the reticle purely vertically. If either
-behaves oddly with roll involved, the signs are off.
+rotating `(ax, ay)` in the projection above.
+
+**Reticle litmus tests - run all of these before calling compensation done:**
+
+1. Pure roll, pitch = 0: reticle stays at screen centre.
+2. Pure pitch, roll = 0: reticle moves purely vertically.
+3. Pitch + roll combined: no horizontal wander as roll changes. (Vertical-only
+   motion when the camera composes roll innermost; offset rotating around
+   centre when roll is outermost. Either way, it must match what the camera
+   renders - the aim point and the reticle stay glued together.)
+4. World-yaw mode (if the mod has one): look straight down, yaw the head -
+   the world spins, the reticle stays fixed at centre.
 
 ### UI Compensation
 
@@ -646,7 +745,7 @@ Each mod's `install.cmd` dispatches to exactly one `:install_<loader>` subroutin
 | BepInExPack (Thunderstore-wrapped) | peak | `bepinex` | `BepInEx/core/BepInEx.dll` | Same as x64; vendor zip extracted through a `BepInExPack_PEAK/` subfolder that must be flattened on install |
 | MelonLoader | green-hell | `melonloader` | `MelonLoader/net35/MelonLoader.dll` (or `net6/`) | `MelonLoader/`, `version.dll`, `dobby.dll`, `NOTICE.txt`; `Mods/`, `UserLibs/`, `UserData/` only if empty after mod files come out |
 | Mono.Cecil patcher | gone-home | `mono-cecil` | `<Managed>/Assembly-CSharp.dll.original` | Restore `.original` over `Assembly-CSharp.dll`, delete `.original`, delete `Mono.Cecil.dll` |
-| Ultimate ASI Loader | dying-light-2 | `asi-loader` | `<exe-dir>/winmm.dll` (renamed from `dinput8.dll`) | `winmm.dll` (or `dinput8.dll`), any `scripts/` stub created by the loader |
+| Ultimate ASI Loader | dying-light-2 | `ultimate-asi-loader` | `<exe-dir>/winmm.dll` (renamed from `dinput8.dll`) | `winmm.dll` (or `dinput8.dll`), any `scripts/` stub created by the loader |
 | REFramework | resident-evil-requiem | `reframework` | `dinput8.dll` + `reframework/` at game root | `dinput8.dll`, `reframework/` |
 | None (shim-only) | bioshock-remastered | - | N/A (the mod DLL *is* the shim - `xinput1_3.dll`) | Just the mod DLL |
 
@@ -797,11 +896,18 @@ Each mod has its own `.github/workflows/build.yml` and `release.yml` in its own 
 
     Write-Host "Package created" -ForegroundColor Green
 
+- name: Compute artifact name from ref
+  shell: pwsh
+  run: |
+    $branch = if ($env:GITHUB_HEAD_REF) { $env:GITHUB_HEAD_REF } else { $env:GITHUB_REF_NAME }
+    $sanitized = $branch -replace '[^A-Za-z0-9._-]', '-'
+    "ARTIFACT_NAME=<ModName>HeadTracking-$sanitized" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
 - name: Upload installer artifact
   uses: actions/upload-artifact@v7
   with:
-    name: <ModName>-installer
-    path: release/*-installer.zip
+    name: ${{ env.ARTIFACT_NAME }}
+    path: release/artifact-contents/
     retention-days: 14
     if-no-files-found: error
 ```
@@ -810,16 +916,98 @@ For pixi-driven mods (currently bioshock-remastered), replace the Package step w
 
 Conventions:
 - Pin Node-24-native majors on JS actions: `actions/checkout@v6`, `actions/upload-artifact@v7`, `microsoft/setup-msbuild@v3`. The earlier v4/v4/v2 trio was Node-20-based and triggers the deprecation warning (Node 20 forced off June 2026, removed Sept 2026). Bump majors when newer ones ship.
-- Artifact name `<ModName>-installer` matches the csproj/AssemblyName, lowercase/uppercase kept as-is.
-- Always `path: release/*-installer.zip` (glob) so the step doesn't have to know the version or the exact filename.
+- **Artifact name is `<ModName>HeadTracking-<sanitized-branch>`**, not a flat `-installer` suffix. The "Compute artifact name from ref" step takes `GITHUB_HEAD_REF` (PRs) or `GITHUB_REF_NAME` (push), replaces any char outside `[A-Za-z0-9._-]` with `-`, and exports `ARTIFACT_NAME`. So a push to `main` yields `<ModName>HeadTracking-main`; a feature branch `fix/seamoth` yields `<ModName>HeadTracking-fix-seamoth`. This lets multiple in-flight branches all publish downloadable artifacts without clobbering each other.
+- The upload step's `path` is `release/artifact-contents/` (a staging dir produced by the preceding "Stage installer contents for artifact upload" step that extracts `release/*-installer.zip`), so users downloading the artifact get the installer tree directly rather than a zip-inside-a-zip.
 - `retention-days: 14` is plenty for test-branch iteration; longer just clutters the Actions UI.
 - `if-no-files-found: error` catches packaging failures that don't exit nonzero.
 
-The end-to-end workflow this enables: branch off `main` -> push -> workflow run completes -> download the `<ModName>-installer` artifact from the Actions run page -> hand the ZIP to the user to run `install.cmd` against their game. Only after they confirm the fix, cut a real release via `release.ps1`.
+The end-to-end workflow this enables: branch off `main` -> push -> workflow run completes -> download the `<ModName>HeadTracking-<branch>` artifact from the Actions run page -> hand the unpacked tree to the user to run `install.cmd` against their game. Only after they confirm the fix, cut a real release via `release.ps1`.
+
+**lopari catalog coupling.** When a mod is added to `lopari/catalog/mods.json`, the `nightly.artifact` field must match the actual artifact name the workflow uploads. For the default branch that is `<ModName>HeadTracking-main`. Older catalog entries (subnautica, DL2, peak, RE4, skyrim-special-edition, painscreek, RE9, bioshock-remastered) still carry the legacy `-installer` suffix from before the per-branch naming switch; do not copy those when authoring a new entry. Cross-check against a recent entry (cyberpunk-2077, easy-delivery-co, fallout-new-vegas, black-and-white) which uses the current `-main` form.
 
 **`release.yml` triggers:** push of `v*.*.*` tags only. Does its own submodule-recursive checkout, full Release build, `scripts/package-release.ps1`, release-notes generation via `generate-release-notes.ps1`, and `gh release create` with the installer and nexus ZIPs attached.
 
 **CI packaging is offline.** `scripts/package-release.ps1` consumes whatever is committed under `vendor/` - it never hits the network. Bumping vendored loaders is a manual `pixi run update-deps` + commit step the dev does locally before tagging a release (see Vendoring section).
+
+### Dev build channel (rolling GitHub pre-release)
+
+Separate from versioned GitHub Releases, every mod's `pixi run release` task accepts `nightly` as an argument (`pixi run release nightly`) which publishes a dev build as a **rolling GitHub pre-release tagged `dev`** on the mod's own repo. It sits alongside the existing `release major | minor | patch | X.Y.Z` modes - same task, one more subcommand. This is the distribution channel for pre-release / dev builds, surfaced to users (including via lopari's one-click install) as bleeding-edge "in-progress" builds. The two channels coexist: a mod with stable versioned releases can also publish a `dev` build off its latest commit.
+
+Dev builds are free and open to everyone - the one-click install is a convenience, not gated access. Anyone can grab the same asset straight from the repo's Releases page. There is no R2 bucket, no Patreon broker, no presigned URLs, and no separate storage or services to run. (Earlier revisions of this doctrine described a private-R2 + Patreon-broker model; that was replaced by the rolling GitHub pre-release described here.)
+
+**Doctrine: dev publishing is a deliberate author action, not a CI side-effect.** `release nightly` runs from the author's machine only. Per-push CI builds (`build.yml`) keep running and producing GitHub Actions artifacts, but those are for the author and for handing test builds to specific users - they are NOT the `dev` pre-release.
+
+**`pixi.toml` wiring:** no new task. The existing `release` task already takes a positional argument (`major`, `minor`, `patch`, or explicit `X.Y.Z`). `nightly` becomes one more accepted value. `scripts/release.ps1` short-circuits to `release-nightly.ps1` when it sees the `nightly` argument:
+
+```powershell
+if ($Version -eq 'nightly') {
+    & (Join-Path $PSScriptRoot 'release-nightly.ps1')
+    exit $LASTEXITCODE
+}
+```
+
+This dispatch is mandatory in every mod's `release.ps1`. Update the usage line to mention `nightly` too: `Usage: pixi run release <major|minor|patch|nightly|X.Y.Z>`.
+
+**Required at `scripts/release-nightly.ps1` (thin shim, mod-specific bits only):**
+
+```powershell
+[CmdletBinding()]
+param([switch]$AllowDirty)
+$ErrorActionPreference = 'Stop'
+$ProjectRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+Import-Module (Join-Path $ProjectRoot 'cameraunlock-core\powershell\NightlyRelease.psm1') -Force
+
+# Extract $version - source depends on the mod:
+#   C++ mods: Select-String on CMakeLists.txt / src\core\constants.h for the version.
+#   C# mods:  Select-String on the .csproj for <Version>...</Version>.
+
+Publish-NightlyBuild `
+    -ModId '<slug-matching-lopari-catalog-id>' `
+    -ModName '<PascalCase-AssemblyName>' `
+    -Version $version `
+    -ProjectRoot $ProjectRoot `
+    -BuildCommand 'pixi run build' `      # omit to default to 'pixi run build-release'
+    -AllowDirty:$AllowDirty
+```
+
+All build/package/hash/publish logic lives in `cameraunlock-core/powershell/NightlyRelease.psm1`. Never duplicate it per-mod - if a mod needs to deviate, extend the module's parameters and update every shim. `-BuildCommand` / `-PackageCommand` and `-InstallerZipPath` are the per-mod override knobs; `-DevTag` defaults to `dev`.
+
+**Auth:** requires the GitHub CLI (`gh`) on PATH and authenticated with permission to create releases on the repo (locally, `gh auth login`; in CI, a `GITHUB_TOKEN` with `contents: write`). No cloud credentials, no `~/.lopari/r2.ps1`, no AWS CLI.
+
+**What `release-nightly` does:**
+
+1. Aborts on a dirty tree unless `-AllowDirty` is passed.
+2. Verifies HEAD is on a remote branch (the pre-release tags this exact commit) - fails fast with "push your commit first" if not.
+3. Runs the build command (default `pixi run build-release`, override via `-BuildCommand`) then the package command (default `pixi run package`).
+4. Stamps a dev version string `<version>-nightly.<utc-date>.<git-short-sha>` for the release title/notes.
+5. Copies the packager's `<ModName>-v<version>-installer.zip` to the fixed asset name `<ModName>-dev-installer.zip` (stable download URL) and SHA-256s it.
+6. Deletes the existing `dev` pre-release and its tag (best-effort; on first publish there's nothing to delete), then recreates the `dev` pre-release at HEAD with the fresh asset attached.
+
+The result is a single rolling `dev` pre-release per repo, always pointing at the newest commit's build, with a stable download URL:
+
+```
+https://github.com/<owner>/<repo>/releases/tag/dev
+https://github.com/<owner>/<repo>/releases/download/dev/<ModName>-dev-installer.zip
+```
+
+**Catalog wiring (in `lopari/catalog/mods.json`):**
+
+A mod whose dev builds come from the rolling `dev` pre-release gets a `distribution` block:
+
+```json
+"distribution": {
+  "type": "dev-release"
+}
+```
+
+`type` is `dev-release` (the obsolete `patreon-nightly` type is gone). The launcher resolves the install from the mod's `dev` GitHub pre-release, keyed off the catalog `repo`. An optional `pinned` sub-object (version / built_at / zip_filename / download_url) is stamped later by lopari.app's update-metadata task so subscribers skip the live GitHub releases API call - the mod author does not hand-write it, and any pinned `download_url` must be on `github.com`.
+
+This is **independent of** the `nightly.artifact` field, which points lopari at per-push GitHub Actions artifacts (14-day retention, served via nightly.link) rather than the permanent pre-release. A mod may carry both; the launcher prefers `distribution` for the install action. Use `distribution: dev-release` for anything published via `release nightly`.
+
+**When `release nightly` is NOT for:**
+
+- Production releases with stable version numbers - those go through `release.ps1` and `gh release create`, attached to a versioned public GitHub Release.
+- One-off test builds for a specific user - hand them the GitHub Actions artifact from `build.yml` instead. The `dev` pre-release is the public bleeding-edge build; replacing it reaches everyone tracking dev.
 
 ---
 
@@ -1003,7 +1191,7 @@ Existing mods have inconsistent GUIDs (`com.headtracking.obradinn`, `com.<game>.
 ## Test Checklist (before release)
 
 1. Head rotation moves view; mouse still aims.
-2. Crosshair/reticle stays on the aim point; weapons fire where reticle points.
+2. Crosshair/reticle stays on the aim point; weapons fire where reticle points. Run the reticle litmus tests (Reticle Compensation section) - single-axis checks pass even when combined poses (pitch+roll, world-yaw while looking down) drift.
 3. Recenter (Home / Ctrl+Shift+T) returns view to center from any angle.
 4. Toggle (End / Ctrl+Shift+Y) cleanly enables/disables with no residual rotation.
 5. Position toggle (PageUp / Ctrl+Shift+G) on/off without jump.
@@ -1017,65 +1205,137 @@ Existing mods have inconsistent GUIDs (`com.headtracking.obradinn`, `com.<game>.
 
 ## C++ Camera Discovery (REDengine / similar engines)
 
-Lessons from hooking The Witcher 3 and RE:Requiem. Applies to any C++ game without source access.
+For finding the camera in a new C++ engine, see the `port-camera-to-cpp-engine` skill.
 
-### Phase 1 - Infrastructure
+---
 
-1. ASI Loader + DXGI Present hook. Create a temp D3D11 device to read `IDXGISwapChain::Present` from the vtable (index 8). Works for DX12 too since DXGI is shared. Hook with MinHook for a per-frame callback.
-2. Validate stability with just Present + UDP + hotkey poller before adding camera hooks.
+## UE5 (Unreal Engine 5) C++ Hook Notes
 
-### Phase 2 - Find the Camera via RTTI
+### FVector / FRotator are doubles, not floats
 
-1. Scan `.rdata` for RTTI `_TypeDescriptor` strings matching likely class names (`CCustomCamera`, `CCamera`, `CCameraDirector`, `CRenderCamera`, `PlayerCameraController`, …).
-2. Walk `_TypeDescriptor → _RTTICompleteObjectLocator → vtable` (COL is at `vtable[-1]`).
-3. Log the first 8–10 vtable entries per camera class.
+UE 5.0+ ships with Large World Coordinates (LWC) on by default. The canonical `FVector` is `FVector3d` (3 doubles, 24 bytes) and `FRotator` is `FRotator3d` (3 doubles, 24 bytes). The float versions (`FVector3f`, `FRotator3f`) only appear where engine code explicitly opts in.
 
-### Phase 3 - Hook a Virtual Function
-
-**Do not backward-prologue-scan from a known instruction.** That found a function only called during loading - wasted hours.
-
-1. Dump vtable entries 0–9 (entries beyond are often RTTI metadata, identifiable by absurd values).
-2. Hook MinHook from `vfunc[2]` onward - `[0]` is typically destructor/RTTI, `[1]` is type info. Per-frame Update/Tick tends to be `[2]`–`[7]`.
-3. **Preserve the return value.** Use `uintptr_t` return, not `void` - declaring `void` when the real function returns a value corrupts RAX and causes visual corruption (screen split, etc.).
-4. Log `this` and call frequency. If not called after 15s, try the next vfunc.
-
-### Phase 4 - Map the Camera Object
-
-1. Dump `this + 0x000..0x200` as hex + float pairs, ONCE (guard with a counter). Do NOT follow unknown pointers - dereferencing into heap destabilizes the game.
-2. Identify fields by value shape:
-   - **Pointers:** large hex, absurd as floats.
-   - **Position:** 3–4 floats with world-coordinate magnitudes.
-   - **Euler angles:** floats in [-180, 180].
-   - **Identity matrix:** 16 floats on a diagonal.
-   - **FOV:** float ~50–90.
-3. Witcher 3 REDengine layout (for reference):
-   - `+0x000` vtable, `+0x060` position (xyzw=1), `+0x080` roll, `+0x084` pitch, `+0x088` yaw, `+0x0E8` FOV, `+0x140` 4x4 matrix (ineffective).
-
-### Phase 5 - Modify Angles (Delta Approach)
+For any UE5 C++ mod that hooks a function taking `FVector*` / `FRotator*` out-params (or any struct containing them, e.g. `FMinimalViewInfo`), declare the structs as doubles:
 
 ```cpp
-// Pre: undo last frame's head tracking
-*camYaw -= s_prevDYaw; *camPitch -= s_prevDPitch; *camRoll -= s_prevDRoll;
-
-uintptr_t ret = s_originalFunc(thisPtr, a2, a3, a4);  // Game runs with clean angles
-
-// Post: apply tracking
-float dYaw = -headYaw, dPitch = headPitch, dRoll = -headRoll;
-*camYaw += dYaw; *camPitch += dPitch; *camRoll += dRoll;
-s_prevDYaw = dYaw; s_prevDPitch = dPitch; s_prevDRoll = dRoll;
-return ret;
+struct FVector  { double X, Y, Z; };       // 24 bytes
+struct FRotator { double Pitch, Yaw, Roll; }; // 24 bytes
 ```
 
-Do NOT save/restore absolute angles - fights the game's mouse accumulator, mouse gets stuck at pitch clamp boundaries. Store the actual applied delta (with inversions baked in), otherwise undo and apply have mismatched signs.
+**Why it matters:** Declaring them as floats (12 bytes) causes two problems on every call:
 
-### Pitfalls
+1. The engine writes 24 bytes into the 12-byte buffer, overflowing 12 bytes of stack adjacent to the buffer. Silent memory corruption.
+2. The bytes that *do* land in the buffer get read as the wrong fields. One field (typically Yaw) lands on the high half of an adjacent double and happens to decode as a small float that looks plausible; the others decode to ~1e25-1e27 garbage. Add tracker delta on top and the camera spins wildly when those values mod 360.
 
-| Pitfall | Symptom | Fix |
-|---------|---------|-----|
-| Scanning heap memory | Crashes 1–30s after scan | Never scan heap - use RTTI + vfunc hooks, objects come from `this` |
-| Dereferencing pointers found in `.data` | Crashes shortly after | Don't dereference unknown pointers |
-| `void` hook on non-void function | Screen split, visual corruption | Use `uintptr_t`, preserve RAX |
-| Backward prologue scan | Hooks a load-only function | Use vtable vfuncs |
-| Storing raw head values, applying inverted | Accumulation drift | Store the delta actually applied |
-| Writing absolute angles | Mouse stuck at pitch clamps | Use delta add/undo |
-| `__try/__except` around bad writes | Crashes still happen | SEH only helps for read probes, not downstream effects of bad writes |
+**Symptom that points here:** rotation/position field values in the 1e10-1e27 range or values that change shape per-call by orders of magnitude. If only one of three axes looks sane and the others are huge, it's almost always this.
+
+Confirmed in Subnautica 2 (UE 5.6.1). Will apply to every future UE5 C++ mod unless the specific build has disabled LWC, which is rare. Verify by dumping `loc_post` from a known position (e.g. spawn) - if Y and Z look sensible in meters and X is ~1e12, the struct is wrong.
+
+### `GetPlayerViewPoint` is the wrong hook target
+
+Even with the structs correct: `APlayerController::GetPlayerViewPoint` is read by weapons, AI sight checks, projectile spawning, raycasts. Modifying it violates the "zero impact on game logic" rule from the Camera System section. Use the pre/post + render-phase pattern from "C++ Pre/Post Hook" above and inject into the view-matrix path, not the game-query path.
+
+
+<!-- agent: Maintain compatibility across new patches -->
+# Maintain compatibility across new patches
+
+Game patches break RVAs. Users update on their own schedule. Our mods must
+keep working for everyone regardless of which patched build they are running.
+
+## The principle: append-only build profiles
+
+Every mod that pins behavior to RVAs ships a *registry* of build profiles.
+Each profile is a tuple `(name, PE fingerprint, offsets)` where the
+fingerprint (TimeDateStamp + SizeOfImage + CheckSum) uniquely identifies a
+specific shipped build. At load time, the mod fingerprints the running EXE
+and looks up the matching profile; no match leaves the mod dormant via the
+existing fingerprint failsafe.
+
+When a patch lands and breaks the current build, the response is to **add**
+a new profile, not edit the existing one. The user on the un-patched build
+keeps matching their old profile by fingerprint; the user who has updated
+matches the new profile. Both work simultaneously from the same mod
+binary.
+
+## What never to do
+
+- **Never edit an existing profile's RVAs in place.** That breaks the mod
+  for every user who has not yet taken the patch. They are stranded with no
+  fix: their installed mod version stops working, the newer mod version
+  does not know about their build either.
+- **Never delete old profiles when adding new ones.** They cost about 1 KB
+  each. Keep them forever.
+- **Never reorder existing profiles in a way that loses information.** The
+  registry is append-mostly; the only re-ordering that makes sense is
+  putting the newest profile first for diagnostic-primary purposes (see
+  below).
+
+## What to do
+
+When a patch breaks RVAs:
+
+1. Derive the new build's RVAs (Ghidra discovery, runtime caller-capture,
+   whatever the mod's discovery workflow requires).
+2. Add a new `extern const BuildProfile kStoreProfile_YYYYMMDD = { ... };`
+   in the relevant `<store>_offsets.cpp` file. Date suffix is the build's
+   release date or close approximation - the PE fingerprint is the
+   authoritative routing key, the date is for human readability only.
+3. Add the new profile to the **top** of the `kKnownProfiles` array in the
+   build registry. The top-of-array entry is the "diagnostic primary": when
+   no profile matches at all, the user-facing log line ("game is newer than
+   any known build") compares the running EXE against this primary's
+   fingerprint to label whether the user is on a newer or older build. It
+   should always be the most recent build the mod knows about.
+4. Leave every prior profile in place, in its original position below the
+   new entry.
+5. CHANGELOG entry lists what changed in the new patched build (a one-line
+   note is enough; the diff itself is in the new profile's RVAs).
+
+## Naming convention
+
+- File names: one file per store, never per-build. e.g. `steam_offsets.cpp`
+  holds every Steam profile, `gdk_offsets.cpp` holds every GDK profile.
+- Profile constants: `kStoreProfile_YYYYMMDD` (e.g. `kSteamProfile_20260522`,
+  `kGdkProfile_20260524`). Append-only inside each file.
+- Profile `.Name` field: same `store-platform-YYYYMMDD` form
+  (e.g. `"steam-win64-20260522"`). Surfaces in the user-facing log line so
+  the user (and we, when triaging) can see exactly which profile activated.
+
+## Why fingerprint, not version string
+
+The mod has to identify the build from inside the running process. Steam
+version strings, Xbox package versions, and store metadata are not visible
+from process memory in a reliable, sandbox-respecting way. The PE header
+of the running EXE is. TimeDateStamp + SizeOfImage + CheckSum together are
+unique per built EXE (collisions would require a relink that produced an
+identical binary, which never happens in practice). Three independent
+fields means a tampered/repacked EXE fails the match instead of silently
+mis-routing.
+
+## When the user's profile is unrecognised
+
+The diagnostic primary (top entry of `kKnownProfiles`) labels the mismatch
+direction:
+- Running TS > primary TS → "game is newer than this mod knows about; check
+  the releases page for an updated mod".
+- Running TS < primary TS → "game is older; let the store finish updating".
+- Same TS, different size/checksum → "tampered/repacked EXE; this mod won't
+  engage on a modified binary".
+
+All three cases leave the mod fully dormant (no hooks installed, no
+process modification). The game runs vanilla. The failsafe is mandatory:
+hooking against stale RVAs crashes the user's game seconds in.
+
+## Costs
+
+- ~1 KB per profile in the binary.
+- One extra fingerprint comparison per known profile at process start. With
+  a few dozen profiles that's still microseconds.
+- The registry file grows over the lifetime of the mod. That is intended.
+
+## Out of scope for this doc
+
+How each profile's RVAs are *derived* is per-mod and per-engine (UE5
+Ghidra workflow vs Unity's IL2CPP dumper vs Mono Cecil reflection
+vs ...). What this doc enforces is that the *registry shape* and the
+*append-only policy* are the same across every mod we ship.
