@@ -24,128 +24,50 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          submodules: true
-
-      - name: Setup Pixi
-        uses: prefix-dev/setup-pixi@v0.8.1
-        with:
-          pixi-version: latest
-          run-install: false
+          submodules: recursive
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Download OWML DLLs
+      - name: Setup pixi
+        uses: prefix-dev/setup-pixi@v0.8.1
+
+      # Build + package through the SAME command a developer runs locally.
+      # All game references resolve via the OuterWildsGameLibs NuGet package -
+      # no game install or OWML download required. No build logic lives in this
+      # workflow, so local and CI can't drift.
+      - name: Build and package
+        shell: pwsh
+        run: pixi run package
+
+      # Unzip the release archive into a folder so upload-artifact doesn't
+      # nest a zip inside its own zip.
+      - name: Stage release contents for artifact
         shell: pwsh
         run: |
-          Write-Host "Downloading OWML from official release..." -ForegroundColor Cyan
-
-          $owmlVersion = "2.15.4"
-          $owmlUrl = "https://github.com/ow-mods/owml/releases/download/$owmlVersion/OWML.zip"
-          $owmlZip = "owml-temp.zip"
-          $expectedHash = "F95D2D14AEE0ADB60F8DB8DAD2100182433827EDD069A8636284E292F9CBC1D2"
-
-          Invoke-WebRequest -Uri $owmlUrl -OutFile $owmlZip
-
-          $actualHash = (Get-FileHash -Path $owmlZip -Algorithm SHA256).Hash
-          if ($actualHash -ne $expectedHash) {
-            Write-Host "::error::OWML download hash mismatch!"
-            Write-Host "::error::Expected: $expectedHash"
-            Write-Host "::error::Got: $actualHash"
+          $zip = Get-ChildItem release/OuterWildsHeadTracking-*.zip -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $zip) {
+            Write-Host "::error::No release ZIP was produced by 'pixi run package'"
             exit 1
           }
+          $dest = "release/artifact-contents"
+          New-Item -ItemType Directory -Path $dest -Force | Out-Null
+          Expand-Archive -Path $zip.FullName -DestinationPath $dest -Force
+          Write-Host "Staged $($zip.Name)" -ForegroundColor Green
 
-          Write-Host "OWML download verified" -ForegroundColor Green
-          Write-Host "Extracting OWML DLLs..." -ForegroundColor Cyan
-
-          New-Item -ItemType Directory -Force -Path "libs" | Out-Null
-
-          Expand-Archive -Path $owmlZip -DestinationPath "owml-temp" -Force
-          Copy-Item "owml-temp/OWML.Common.dll" "libs/"
-          Copy-Item "owml-temp/OWML.ModHelper.dll" "libs/"
-          Copy-Item "owml-temp/OWML.ModHelper.Menus.dll" "libs/"
-
-          Remove-Item $owmlZip
-          Remove-Item -Recurse "owml-temp"
-
-          Write-Host "OWML DLLs extracted from verified archive" -ForegroundColor Green
-
-      - name: Restore NuGet packages
-        run: dotnet restore src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj
-
-      - name: Build Debug
+      - name: Compute artifact name from ref
+        id: artifact
         shell: pwsh
         run: |
-          Write-Host "Building debug configuration..." -ForegroundColor Cyan
-          dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj --configuration Debug
+          $branch = "${{ github.ref_name }}" -replace '[^A-Za-z0-9._-]', '-'
+          echo "name=OuterWildsHeadTracking-$branch" >> $env:GITHUB_OUTPUT
 
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Debug build failed"
-            exit 1
-          }
-
-          Write-Host "Debug build succeeded" -ForegroundColor Green
-
-      - name: Build Release
-        shell: pwsh
-        run: |
-          Write-Host "Building release configuration..." -ForegroundColor Cyan
-          dotnet build src/OuterWildsHeadTracking/OuterWildsHeadTracking.csproj --configuration Release
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Release build failed"
-            exit 1
-          }
-
-          Write-Host "Release build succeeded" -ForegroundColor Green
-
-      - name: Verify build outputs
-        shell: pwsh
-        run: |
-          Write-Host "Verifying build outputs..." -ForegroundColor Cyan
-
-          $requiredFiles = @(
-            "src/OuterWildsHeadTracking/bin/Debug/net48/OuterWildsHeadTracking.dll",
-            "src/OuterWildsHeadTracking/bin/Release/net48/OuterWildsHeadTracking.dll"
-          )
-
-          $allExist = $true
-          foreach ($file in $requiredFiles) {
-            if (Test-Path $file) {
-              $size = (Get-Item $file).Length / 1KB
-              Write-Host "  $file ($([math]::Round($size, 2)) KB)" -ForegroundColor Green
-            } else {
-              Write-Host "  Missing: $file" -ForegroundColor Red
-              $allExist = $false
-            }
-          }
-
-          if (-not $allExist) {
-            Write-Host "::error::Some build outputs are missing"
-            exit 1
-          }
-
-          Write-Host "All build outputs verified" -ForegroundColor Green
-
-      - name: Package installer
-        shell: pwsh
-        run: |
-          Write-Host "Packaging installer ZIP..." -ForegroundColor Cyan
-          powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1
-
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::error::Packaging failed"
-            exit 1
-          }
-
-          Write-Host "Package created" -ForegroundColor Green
-
-      - name: Upload mod artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: OuterWildsHeadTracking
-          path: release/OuterWildsHeadTracking-*.zip
+          name: ${{ steps.artifact.outputs.name }}
+          path: release/artifact-contents/
           retention-days: 14
           if-no-files-found: error

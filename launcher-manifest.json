@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "mod_info": {
+    "name": "OuterWildsHeadTracking",
+    "version": "1.1.0",
+    "game_id": "outer-wilds"
+  },
+  "strategy": "OWML",
+  "delivery_mode": "external",
+
+  "loader": null,
+
+  "files": [
+    { "source": "OuterWildsHeadTracking.dll", "target": "OuterWildsHeadTracking.dll" },
+    { "source": "CameraUnlock.Core.dll", "target": "CameraUnlock.Core.dll" },
+    { "source": "manifest.json", "target": "manifest.json" },
+    { "source": "default-config.json", "target": "default-config.json" }
+  ],
+
+  "runtime_requirements": [],
+  "dependencies": [],
+
+  "external": {
+    "manager_name": "Outer Wilds Mod Manager",
+    "manager_url": "https://outerwildsmods.com/",
+    "loader": "OWML",
+    "owml_version": "2.9.0",
+    "deploy_root": "%APPDATA%/OuterWildsModManager/OWML/Mods/itsloopyo.OuterWildsHeadTracking/",
+    "owml_manifest": "manifest.json"
+  }
+}

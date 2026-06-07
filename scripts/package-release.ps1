@@ -48,11 +48,31 @@ foreach ($dll in $dlls) {
     Write-Host "  $dll" -ForegroundColor Green
 }
 
-# Copy manifest and config
+# Copy OWML manifest and config (consumed by the Outer Wilds Mod Manager)
 Copy-Item (Join-Path $projectRoot "manifest.json") $stagingDir
 Write-Host "  manifest.json" -ForegroundColor Green
 Copy-Item (Join-Path $projectRoot "default-config.json") $stagingDir
 Write-Host "  default-config.json" -ForegroundColor Green
+
+# Stamp launcher-manifest.json with the real release version and copy it to
+# the ZIP root. This is additive metadata for the Lopari launcher; the OWML
+# files above are untouched, so the Outer Wilds Mod Manager flow is unchanged.
+$manifestSource = Join-Path $projectRoot "launcher-manifest.json"
+if (-not (Test-Path $manifestSource)) {
+    Write-Host "ERROR: launcher-manifest.json not found at repo root ($manifestSource)" -ForegroundColor Red
+    exit 1
+}
+$launcherManifest = Get-Content $manifestSource -Raw | ConvertFrom-Json
+$launcherManifest.mod_info.version = $version
+# Set-Content -Encoding UTF8 on Windows PowerShell 5.1 writes a BOM that
+# serde_json rejects; write through the .NET API with a no-BOM encoder.
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[System.IO.File]::WriteAllText(
+    (Join-Path $stagingDir "launcher-manifest.json"),
+    ($launcherManifest | ConvertTo-Json -Depth 10),
+    $utf8NoBom
+)
+Write-Host "  launcher-manifest.json (v$version)" -ForegroundColor Green
 
 # Copy documentation
 $docFiles = @("README.md", "LICENSE")
