@@ -26,6 +26,11 @@
       <IncludeAssets>compile</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="OWML" Version="2.16.2" GeneratePathProperty="true">
+      <IncludeAssets>compile</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <!-- Unity assembly references with extern aliases -->
@@ -51,43 +56,21 @@
     </Reference>
   </ItemGroup>
 
-  <!-- OWML path configuration -->
-  <PropertyGroup>
-    <OwmlPath>$(APPDATA)\OuterWildsModManager\OWML</OwmlPath>
-  </PropertyGroup>
-
-  <!-- OWML References - local install -->
-  <ItemGroup Condition="Exists('$(OwmlPath)')">
+  <!-- OWML references with extern aliases, resolved from the OWML NuGet
+       package so the build is game-independent (no local OWML install). -->
+  <ItemGroup>
     <Reference Include="OWML.ModHelper">
-      <HintPath>$(OwmlPath)\OWML.ModHelper.dll</HintPath>
+      <HintPath>$(PkgOWML)\lib\net48\OWML.ModHelper.dll</HintPath>
       <Private>False</Private>
       <Aliases>OWMLCore</Aliases>
     </Reference>
     <Reference Include="OWML.Common">
-      <HintPath>$(OwmlPath)\OWML.Common.dll</HintPath>
+      <HintPath>$(PkgOWML)\lib\net48\OWML.Common.dll</HintPath>
       <Private>False</Private>
       <Aliases>OWMLCommon</Aliases>
     </Reference>
     <Reference Include="OWML.ModHelper.Menus">
-      <HintPath>$(OwmlPath)\OWML.ModHelper.Menus.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-
-  <!-- OWML References - CI fallback (libs/ directory) -->
-  <ItemGroup Condition="!Exists('$(OwmlPath)') And Exists('$(MSBuildThisFileDirectory)..\..\libs')">
-    <Reference Include="OWML.ModHelper">
-      <HintPath>$(MSBuildThisFileDirectory)..\..\libs\OWML.ModHelper.dll</HintPath>
-      <Private>False</Private>
-      <Aliases>OWMLCore</Aliases>
-    </Reference>
-    <Reference Include="OWML.Common">
-      <HintPath>$(MSBuildThisFileDirectory)..\..\libs\OWML.Common.dll</HintPath>
-      <Private>False</Private>
-      <Aliases>OWMLCommon</Aliases>
-    </Reference>
-    <Reference Include="OWML.ModHelper.Menus">
-      <HintPath>$(MSBuildThisFileDirectory)..\..\libs\OWML.ModHelper.Menus.dll</HintPath>
+      <HintPath>$(PkgOWML)\lib\net48\OWML.ModHelper.Menus.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>

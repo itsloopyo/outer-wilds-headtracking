@@ -24,5 +24,12 @@ release/
 
 # Game-specific
 libs/
+
+# Agent / tooling scaffolding (machine-generated, not tracked)
 .claude/
+.lab/
 .millhouse/
+.pixi/
+AGENTS.md
+CLAUDE.md
+.mcp.json
