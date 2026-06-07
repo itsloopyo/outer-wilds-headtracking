@@ -53,12 +53,12 @@ jobs:
           Write-Host "Version matches!" -ForegroundColor Green
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: '8.0.x'
 
       - name: Setup pixi
-        uses: prefix-dev/setup-pixi@v0.8.1
+        uses: prefix-dev/setup-pixi@v0.9.6
 
       # Build + package through the SAME command developers and the Build
       # workflow run. All game references resolve via the OuterWildsGameLibs
