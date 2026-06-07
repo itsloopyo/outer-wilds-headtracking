@@ -33,6 +33,13 @@ jobs:
 
       - name: Setup pixi
         uses: prefix-dev/setup-pixi@v0.9.6
+        with:
+          # This workspace declares no conda dependencies - it is a pure task
+          # runner over dotnet/PowerShell. Skip 'pixi install' (and the action's
+          # post-install 'pixi list', which exits non-zero on an empty
+          # environment in pixi >= 0.70). 'pixi run package' resolves the empty
+          # environment itself.
+          run-install: false
 
       # Build + package through the SAME command a developer runs locally.
       # All game references resolve via the OuterWildsGameLibs NuGet package -
