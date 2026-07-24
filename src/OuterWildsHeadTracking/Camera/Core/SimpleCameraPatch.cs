@@ -34,9 +34,7 @@ namespace OuterWildsHeadTracking.Camera.Core
         public static Quaternion _baseRotationBeforeHeadTracking = Quaternion.identity;
         public static UnityCoreModule::UnityEngine.Transform? _cameraTransform = null;
 
-        private static float _lastGameDegreesX = 0f;
-        private static float _lastGameDegreesY = 0f;
-        private static float _gameCameraChangeSpeed = 0f;
+        private static float _headTrackingInfluence = 1f;
 
         private static AccessTools.FieldRef<PlayerCameraController, float>? _degreesXRef;
         private static AccessTools.FieldRef<PlayerCameraController, float>? _degreesYRef;
@@ -145,12 +143,6 @@ namespace OuterWildsHeadTracking.Camera.Core
 
             float gameDegreesX = _degreesXRef(__instance);
             float gameDegreesY = _degreesYRef(__instance);
-
-            float deltaX = gameDegreesX - _lastGameDegreesX;
-            float deltaY = gameDegreesY - _lastGameDegreesY;
-            _gameCameraChangeSpeed = UnityCoreModule::UnityEngine.Mathf.Sqrt(deltaX * deltaX + deltaY * deltaY);
-            _lastGameDegreesX = gameDegreesX;
-            _lastGameDegreesY = gameDegreesY;
 
             var gameWantedRotation = Quaternion.Euler(-gameDegreesY, gameDegreesX, 0f);
 
@@ -338,7 +330,7 @@ namespace OuterWildsHeadTracking.Camera.Core
                 float pitch = processed.Value.Pitch;
                 float roll = processed.Value.Roll;
 
-                float headTrackingInfluence = CalculateHeadTrackingInfluence();
+                float headTrackingInfluence = CalculateHeadTrackingInfluence(deltaTime);
                 yaw *= headTrackingInfluence;
                 pitch *= headTrackingInfluence;
                 roll *= headTrackingInfluence;
@@ -392,17 +384,16 @@ namespace OuterWildsHeadTracking.Camera.Core
             }
         }
 
-        private static float CalculateHeadTrackingInfluence()
+        private static float CalculateHeadTrackingInfluence(float deltaTime)
         {
-            if (_gameCameraChangeSpeed > TrackingConstants.DIALOGUE_CAMERA_SPEED_THRESHOLD)
-            {
-                float reduction = UnityCoreModule::UnityEngine.Mathf.Clamp01(
-                    (_gameCameraChangeSpeed - TrackingConstants.DIALOGUE_CAMERA_SPEED_THRESHOLD) /
-                    TrackingConstants.DIALOGUE_CAMERA_SPEED_RANGE
-                );
-                return UnityCoreModule::UnityEngine.Mathf.Lerp(1f, TrackingConstants.DIALOGUE_MIN_HEAD_TRACKING, reduction);
-            }
-            return 1f;
+            float target = PlayerState.InConversation()
+                ? TrackingConstants.DIALOGUE_MIN_HEAD_TRACKING
+                : 1f;
+            float t = 1f - UnityCoreModule::UnityEngine.Mathf.Exp(
+                -TrackingConstants.DIALOGUE_FADE_SPEED * deltaTime);
+            _headTrackingInfluence = UnityCoreModule::UnityEngine.Mathf.Lerp(
+                _headTrackingInfluence, target, t);
+            return _headTrackingInfluence;
         }
     }
 }
