@@ -83,7 +83,7 @@ namespace OuterWildsHeadTracking.Tracking
                     HeadTrackingMod.PositionLimitZ,
                     HeadTrackingMod.PositionLimitZBack,
                     HeadTrackingMod.PositionSmoothing,
-                    invertX: true, invertY: false, invertZ: false
+                    invertX: true, invertY: false, invertZ: true
                 );
             }
         }
