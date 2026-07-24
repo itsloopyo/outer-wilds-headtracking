@@ -6,7 +6,6 @@ using CameraUnlock.Core.Math;
 using OuterWildsHeadTracking.Configuration;
 using OuterWildsHeadTracking.Tracking;
 using OuterWildsHeadTracking.Camera.Utilities;
-using OuterWildsHeadTracking.Camera.Effects;
 using OuterWildsHeadTracking.Camera.UI;
 using OuterWildsHeadTracking.Utilities;
 using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
@@ -247,8 +246,6 @@ namespace OuterWildsHeadTracking.Camera.Core
             if (mod == null) return;
 
             ReticleUpdater.Create();
-            if (mod.ModHelper != null)
-                PlayerHeadHider.LogNearbyRenderers(__instance.transform, mod.ModHelper);
             UnityCoreModule::UnityEngine.Camera.onPreRender -= OnCameraPreRender;
             UnityCoreModule::UnityEngine.Camera.onPreRender += OnCameraPreRender;
             UnityCoreModule::UnityEngine.Camera.onPreCull -= OnCameraPreCull;
