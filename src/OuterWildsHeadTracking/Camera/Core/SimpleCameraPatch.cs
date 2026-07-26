@@ -18,6 +18,12 @@ namespace OuterWildsHeadTracking.Camera.Core
     /// Rotation and position are applied in Update_Postfix. The game resets localRotation
     /// each frame via its own UpdateRotation, so no save/restore is needed for rotation.
     /// Position is cleaned up in FixedUpdate_Prefix/Update_Prefix before game logic.
+    ///
+    /// Never touch PlayerHUD/HelmetOnUI/HUDCamera. It is a self-contained rig outside
+    /// the player camera hierarchy that renders the helmet gauges into the "HelmetHUD"
+    /// RenderTexture painted on the visor, so it must keep its fixed pose relative to
+    /// its own canvas. Canvas markers project through the player camera
+    /// (CanvasMarkerManager sets worldCamera to the active camera), not through it.
     /// </summary>
     [HarmonyPatch(typeof(PlayerCameraController))]
     public class SimpleCameraPatch
@@ -46,10 +52,6 @@ namespace OuterWildsHeadTracking.Camera.Core
         // Position tracking state
         public static Vec3 _lastPositionOffset = Vec3.Zero;
         private static bool _positionOffsetApplied = false;
-
-        // HUD camera save/restore state
-        private static Quaternion _savedHudCameraRotation;
-        private static bool _hudCameraModified = false;
 
         // Frame coordination for tracking data drain
         public static int _lastDrainedFrame = -1;
@@ -240,10 +242,6 @@ namespace OuterWildsHeadTracking.Camera.Core
             ReticleUpdater.Create();
             UnityCoreModule::UnityEngine.Camera.onPreRender -= OnCameraPreRender;
             UnityCoreModule::UnityEngine.Camera.onPreRender += OnCameraPreRender;
-            UnityCoreModule::UnityEngine.Camera.onPreCull -= OnCameraPreCull;
-            UnityCoreModule::UnityEngine.Camera.onPreCull += OnCameraPreCull;
-            UnityCoreModule::UnityEngine.Camera.onPostRender -= OnCameraPostRender;
-            UnityCoreModule::UnityEngine.Camera.onPostRender += OnCameraPostRender;
         }
 
         private static void OnCameraPreRender(UnityCoreModule::UnityEngine.Camera cam)
@@ -253,32 +251,6 @@ namespace OuterWildsHeadTracking.Camera.Core
             if (_lastHeadTrackingRotation == Quaternion.identity) return;
 
             ReticleUpdater.GetInstance()?.UpdateReticlePosition();
-        }
-
-        /// <summary>
-        /// Applies head tracking rotation to the HUD camera before it renders.
-        /// The HUD camera renders to a "HelmetHUD" RenderTexture that is composited
-        /// onto the helmet visor. Without this, the HUD camera sees canvas markers
-        /// at un-rotated positions, producing ghost markers on the visor overlay.
-        /// </summary>
-        private static void OnCameraPreCull(UnityCoreModule::UnityEngine.Camera cam)
-        {
-            if (cam.targetTexture == null || cam.targetTexture.name != "HelmetHUD") return;
-            if (_cameraTransform == null) return;
-            if (_lastHeadTrackingRotation == Quaternion.identity) return;
-
-            _savedHudCameraRotation = cam.transform.rotation;
-            cam.transform.rotation = _cameraTransform.rotation;
-            _hudCameraModified = true;
-        }
-
-        private static void OnCameraPostRender(UnityCoreModule::UnityEngine.Camera cam)
-        {
-            if (!_hudCameraModified) return;
-            if (cam.targetTexture == null || cam.targetTexture.name != "HelmetHUD") return;
-
-            cam.transform.rotation = _savedHudCameraRotation;
-            _hudCameraModified = false;
         }
 
         private static void HandleTrackingLoss(OpenTrackClient.RawEulerAngles rawAngles, float deltaTime)
