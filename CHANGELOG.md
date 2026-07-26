@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0] - 2026-07-27
+
+### Added
+
+- add PoseInterpolator to OpenTrack rotation pipeline
+
+### Fixed
+
+- invert positional Z so leaning in moves the camera forward
+- remove renderer-scan log spam from the OWML console
+- stop crosshair judder during mouse look by keying dialogue damping to conversation state
+- stop rotating the helmet HUD camera
+
 ## [1.1.0] - 2026-04-29
 
 ### Other
