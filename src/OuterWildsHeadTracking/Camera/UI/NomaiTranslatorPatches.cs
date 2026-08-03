@@ -1,22 +1,20 @@
-extern alias UnityCoreModule;
 using System;
 using HarmonyLib;
-using OuterWildsHeadTracking.Camera.Core;
-using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
+using OuterWildsHeadTracking.Camera.Utilities;
 
 namespace OuterWildsHeadTracking.Camera.UI
 {
     /// <summary>
-    /// Patches NomaiTranslator.Update to apply head tracking to the camera transform
-    /// during raycast calculations. Without this, if NomaiTranslator.Update runs before
-    /// PlayerCameraController.Update, the camera has game-only rotation and the translator
-    /// raycast won't follow head direction.
-    /// Matches the signalscope pattern: modify camera transform directly.
+    /// Removes head tracking from the camera transform during NomaiTranslator.Update
+    /// so the translator raycast targets the text under the reticle. Must match
+    /// InteractionPatches: FirstPersonManipulator focuses Nomai text along the clean
+    /// aim, so the translator has to scan the same direction or the "translate"
+    /// prompt and the actual translation target disagree.
     /// </summary>
     public static class NomaiTranslatorPatches
     {
-        private static Quaternion _savedRotation = Quaternion.identity;
-        private static bool _rotationModified = false;
+        private static readonly RotationPatchHelper _helper =
+            new RotationPatchHelper(RotationPatchMode.RemoveHeadTracking);
 
         public static void ApplyPatches(Harmony harmony)
         {
@@ -33,34 +31,8 @@ namespace OuterWildsHeadTracking.Camera.UI
                 postfix: new HarmonyMethod(AccessTools.Method(typeof(NomaiTranslatorPatches), nameof(Postfix))));
         }
 
-        public static void Prefix()
-        {
-            var mod = HeadTrackingMod.Instance;
-            if (mod == null || !mod.IsTrackingEnabled()) return;
+        public static void Prefix() => _helper.BeginPatch();
 
-            var cameraTransform = SimpleCameraPatch._cameraTransform;
-            if (cameraTransform == null) return;
-
-            var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
-            if (headTracking == Quaternion.identity) return;
-
-            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-            if (baseRotation == default) return;
-
-            _savedRotation = cameraTransform.rotation;
-            cameraTransform.rotation = baseRotation * headTracking;
-            _rotationModified = true;
-        }
-
-        public static void Postfix()
-        {
-            if (!_rotationModified) return;
-
-            var cameraTransform = SimpleCameraPatch._cameraTransform;
-            if (cameraTransform == null) return;
-
-            cameraTransform.rotation = _savedRotation;
-            _rotationModified = false;
-        }
+        public static void Postfix() => _helper.EndPatch();
     }
 }

@@ -248,7 +248,11 @@ namespace OuterWildsHeadTracking.Camera.Core
         {
             if (cam != UnityCoreModule::UnityEngine.Camera.main) return;
             if (_cameraTransform == null) return;
-            if (_lastHeadTrackingRotation == Quaternion.identity) return;
+            if (_lastHeadTrackingRotation == Quaternion.identity)
+            {
+                ReticleUpdater.GetInstance()?.RestoreCenterPromptPosition();
+                return;
+            }
 
             ReticleUpdater.GetInstance()?.UpdateReticlePosition();
         }

@@ -1,10 +1,14 @@
 extern alias UnityCoreModule;
+extern alias UnityUIModule;
 using OuterWildsHeadTracking.Camera.Utilities;
 using OuterWildsHeadTracking.Camera.Core;
+using Vector2 = UnityCoreModule::UnityEngine.Vector2;
 using Vector3 = UnityCoreModule::UnityEngine.Vector3;
 using GameObject = UnityCoreModule::UnityEngine.GameObject;
 using RectTransform = UnityCoreModule::UnityEngine.RectTransform;
 using MonoBehaviour = UnityCoreModule::UnityEngine.MonoBehaviour;
+using Screen = UnityCoreModule::UnityEngine.Screen;
+using Canvas = UnityUIModule::UnityEngine.Canvas;
 using Physics = UnityEngine.Physics;
 using QueryTriggerInteraction = UnityEngine.QueryTriggerInteraction;
 
@@ -24,6 +28,10 @@ namespace OuterWildsHeadTracking.Camera.UI
         private static ReticleUpdater _instance = null!;
         private RectTransform _reticleTransform = null!;
         private UnityCoreModule::UnityEngine.Camera _mainCamera = null!;
+        private RectTransform _centerPromptTransform = null!;
+        private Canvas _centerPromptCanvas = null!;
+        private Vector2 _centerPromptHomePosition;
+        private bool _centerPromptMoved = false;
         private int _lastCacheAttemptFrame = -1;
         private const int CACHE_RETRY_INTERVAL = 60;
 
@@ -82,6 +90,22 @@ namespace OuterWildsHeadTracking.Camera.UI
                 _mainCamera = UnityCoreModule::UnityEngine.Camera.main;
             }
 
+            if (_centerPromptTransform == null && (currentFrame - _lastCacheAttemptFrame) > CACHE_RETRY_INTERVAL)
+            {
+                _lastCacheAttemptFrame = currentFrame;
+                var promptManager = Locator.GetPromptManager();
+                var centerList = promptManager != null
+                    ? promptManager.GetScreenPromptList(PromptPosition.Center)
+                    : null;
+                if (centerList != null)
+                {
+                    _centerPromptTransform = centerList.GetComponent<RectTransform>();
+                    _centerPromptCanvas = centerList.GetComponentInParent<Canvas>();
+                    _centerPromptHomePosition = _centerPromptTransform.anchoredPosition;
+                    _centerPromptMoved = false;
+                }
+            }
+
             if (_reticleTransform == null || _mainCamera == null) return;
 
             // Get the base camera rotation (without head tracking)
@@ -105,6 +129,28 @@ namespace OuterWildsHeadTracking.Camera.UI
 
             // Update reticle position to match base aim direction
             _reticleTransform.position = new Vector3(screenPoint.x, screenPoint.y, 0);
+
+            // Move the center screen-prompt list (interact glyph/text) with the
+            // reticle, preserving its designed offset from screen centre.
+            if (_centerPromptTransform != null && _centerPromptCanvas != null)
+            {
+                var pixelDelta = new Vector2(
+                    screenPoint.x - Screen.width * 0.5f,
+                    screenPoint.y - Screen.height * 0.5f);
+                _centerPromptTransform.anchoredPosition =
+                    _centerPromptHomePosition + pixelDelta / _centerPromptCanvas.scaleFactor;
+                _centerPromptMoved = true;
+            }
+        }
+
+        public void RestoreCenterPromptPosition()
+        {
+            if (!_centerPromptMoved) return;
+            _centerPromptMoved = false;
+            if (_centerPromptTransform != null)
+            {
+                _centerPromptTransform.anchoredPosition = _centerPromptHomePosition;
+            }
         }
     }
 }
