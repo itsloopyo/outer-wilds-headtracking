@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.2.2] - 2026-08-03
+
+### Fixed
+
+- snap the reticle back to centre when tracking goes identity
+
 ## [1.2.1] - 2026-08-03
 
 ### Fixed
