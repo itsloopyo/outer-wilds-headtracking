@@ -263,7 +263,12 @@ namespace OuterWildsHeadTracking.Camera.Core
             if (_cameraTransform == null) return;
             if (_lastHeadTrackingRotation == Quaternion.identity)
             {
-                ReticleUpdater.GetInstance()?.RestoreCenterPromptPosition();
+                // The game never repositions the reticle itself, so a stale override
+                // from before a recenter/toggle would linger until the head moved
+                // past Unity's quaternion equality epsilon (~0.16 degrees).
+                var updater = ReticleUpdater.GetInstance();
+                updater?.RestoreReticlePosition();
+                updater?.RestoreCenterPromptPosition();
                 return;
             }
 

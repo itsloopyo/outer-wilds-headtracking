@@ -27,6 +27,8 @@ namespace OuterWildsHeadTracking.Camera.UI
 
         private static ReticleUpdater _instance = null!;
         private RectTransform _reticleTransform = null!;
+        private Vector2 _reticleHomePosition;
+        private bool _reticleMoved = false;
         private UnityCoreModule::UnityEngine.Camera _mainCamera = null!;
         private RectTransform _centerPromptTransform = null!;
         private Canvas _centerPromptCanvas = null!;
@@ -63,6 +65,8 @@ namespace OuterWildsHeadTracking.Camera.UI
             if (reticleObject != null)
             {
                 _reticleTransform = reticleObject.GetComponent<RectTransform>();
+                _reticleHomePosition = _reticleTransform.anchoredPosition;
+                _reticleMoved = false;
             }
 
             _mainCamera = UnityCoreModule::UnityEngine.Camera.main;
@@ -81,6 +85,8 @@ namespace OuterWildsHeadTracking.Camera.UI
                 if (reticleObject != null)
                 {
                     _reticleTransform = reticleObject.GetComponent<RectTransform>();
+                    _reticleHomePosition = _reticleTransform.anchoredPosition;
+                    _reticleMoved = false;
                 }
             }
 
@@ -129,6 +135,7 @@ namespace OuterWildsHeadTracking.Camera.UI
 
             // Update reticle position to match base aim direction
             _reticleTransform.position = new Vector3(screenPoint.x, screenPoint.y, 0);
+            _reticleMoved = true;
 
             // Move the center screen-prompt list (interact glyph/text) with the
             // reticle, preserving its designed offset from screen centre.
@@ -140,6 +147,16 @@ namespace OuterWildsHeadTracking.Camera.UI
                 _centerPromptTransform.anchoredPosition =
                     _centerPromptHomePosition + pixelDelta / _centerPromptCanvas.scaleFactor;
                 _centerPromptMoved = true;
+            }
+        }
+
+        public void RestoreReticlePosition()
+        {
+            if (!_reticleMoved) return;
+            _reticleMoved = false;
+            if (_reticleTransform != null)
+            {
+                _reticleTransform.anchoredPosition = _reticleHomePosition;
             }
         }
 
