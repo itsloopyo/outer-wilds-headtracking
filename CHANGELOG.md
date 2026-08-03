@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1] - 2026-08-03
+
+### Fixed
+
+- keep interaction raycasts and prompts glued to the reticle
+- recenter from the live pose and honor tracker app recenter requests
+
 ## [1.2.0] - 2026-07-27
 
 ### Added
