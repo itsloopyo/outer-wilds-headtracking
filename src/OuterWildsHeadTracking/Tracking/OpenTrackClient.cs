@@ -141,6 +141,11 @@ namespace OuterWildsHeadTracking.Tracking
             _positionInterpolator?.Reset();
         }
 
+        public bool TryConsumeRecenterRequest()
+        {
+            return _receiver?.TryConsumeRecenterRequest() ?? false;
+        }
+
         /// <summary>
         /// Resets position processing state.
         /// </summary>

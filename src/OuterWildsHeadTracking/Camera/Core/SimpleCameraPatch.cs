@@ -29,7 +29,6 @@ namespace OuterWildsHeadTracking.Camera.Core
     public class SimpleCameraPatch
     {
         private static bool _centerSet = false;
-        private static int _framesWithoutData = 0;
         private static float _secondsWithoutData = 0f;
         private static int _stabilizationFramesRemaining = 0;
         private const float TRACKING_LOSS_FADE_DELAY_SECONDS = 0.5f;
@@ -58,13 +57,27 @@ namespace OuterWildsHeadTracking.Camera.Core
 
         public static void RecenterTracking()
         {
-            _centerSet = false;
             _smoothedYaw = 0f;
             _smoothedPitch = 0f;
             _smoothedRoll = 0f;
             _lastPositionOffset = Vec3.Zero;
             _positionOffsetApplied = false;
-            HeadTrackingMod.Instance?.GetTrackingClient()?.ResetProcessor();
+
+            // Capture the center from the current pose immediately: deferring via
+            // _centerSet re-captures from a later frame, baking any head motion
+            // between the press and the recapture into the center offset. Only
+            // fall back to deferred capture when no data has arrived yet.
+            var mod = HeadTrackingMod.Instance;
+            var rawAngles = mod?.GetTrackingClient()?.PeekRawEulerAngles();
+            if (mod != null && rawAngles?.IsValid == true)
+            {
+                SetCenter(rawAngles.Value, mod);
+            }
+            else
+            {
+                _centerSet = false;
+                mod?.GetTrackingClient()?.ResetProcessor();
+            }
         }
 
         [HarmonyPatch("FixedUpdate")]
@@ -261,7 +274,6 @@ namespace OuterWildsHeadTracking.Camera.Core
         {
             if (!rawAngles.IsValid)
             {
-                _framesWithoutData++;
                 _secondsWithoutData += deltaTime;
                 _stabilizationFramesRemaining = STABILIZATION_FRAME_COUNT;
 
@@ -275,14 +287,12 @@ namespace OuterWildsHeadTracking.Camera.Core
                         _smoothedYaw, _smoothedPitch, _smoothedRoll);
                 }
 
-                if (_framesWithoutData > TrackingConstants.RECENTER_THRESHOLD_FRAMES && _centerSet)
-                {
-                    _centerSet = false;
-                }
+                // The center is deliberately kept across the gap: data resuming
+                // after a loss must not re-baseline - the user may not be facing
+                // the screen; the tracker app owns re-acquisition recentering.
             }
             else
             {
-                _framesWithoutData = 0;
                 _secondsWithoutData = 0f;
             }
         }

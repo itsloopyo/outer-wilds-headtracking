@@ -116,6 +116,12 @@ namespace OuterWildsHeadTracking
 
         private void Update()
         {
+            if (_trackingClient?.TryConsumeRecenterRequest() == true)
+            {
+                global::OuterWildsHeadTracking.Camera.Core.SimpleCameraPatch.RecenterTracking();
+                ModHelper?.Console.WriteLine("[HeadTracking] Recentered by tracker app", MessageType.Info);
+            }
+
             // Unity's InputSystem can throw InvalidOperationException during scene transitions
             // when the keyboard device is being reconfigured. This is expected behavior and
             // hotkey checking should gracefully skip when the input system is in flux.
