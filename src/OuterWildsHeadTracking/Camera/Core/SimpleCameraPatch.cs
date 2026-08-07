@@ -28,12 +28,9 @@ namespace OuterWildsHeadTracking.Camera.Core
     [HarmonyPatch(typeof(PlayerCameraController))]
     public class SimpleCameraPatch
     {
-        private static bool _centerSet = false;
         private static float _secondsWithoutData = 0f;
-        private static int _stabilizationFramesRemaining = 0;
         private const float TRACKING_LOSS_FADE_DELAY_SECONDS = 0.5f;
         private const float TRACKING_LOSS_FADE_SPEED = 2.0f;
-        private const int STABILIZATION_FRAME_COUNT = 10;
 
         public static Quaternion _lastHeadTrackingRotation = Quaternion.identity;
         public static Quaternion _baseRotationBeforeHeadTracking = Quaternion.identity;
@@ -63,10 +60,10 @@ namespace OuterWildsHeadTracking.Camera.Core
             _lastPositionOffset = Vec3.Zero;
             _positionOffsetApplied = false;
 
-            // Capture the center from the current pose immediately: deferring via
-            // _centerSet re-captures from a later frame, baking any head motion
-            // between the press and the recapture into the center offset. Only
-            // fall back to deferred capture when no data has arrived yet.
+            // Capture the center from the current pose immediately: deferring the
+            // capture to a later frame bakes any head motion between the press and
+            // the recapture into the center offset. With no data yet there is
+            // nothing to capture, so drop back to an identity center.
             var mod = HeadTrackingMod.Instance;
             var rawAngles = mod?.GetTrackingClient()?.PeekRawEulerAngles();
             if (mod != null && rawAngles?.IsValid == true)
@@ -75,7 +72,6 @@ namespace OuterWildsHeadTracking.Camera.Core
             }
             else
             {
-                _centerSet = false;
                 mod?.GetTrackingClient()?.ResetProcessor();
             }
         }
@@ -168,7 +164,10 @@ namespace OuterWildsHeadTracking.Camera.Core
             var mod = HeadTrackingMod.Instance;
             if (mod == null || !mod.IsTrackingEnabled())
             {
-                _centerSet = false;
+                // The center survives the disable: signalscope zoom, the model
+                // ship console and the toggle hotkey all pass through here, and
+                // re-baselining on the way back out silently moves the center to
+                // wherever the head happened to be.
                 _lastHeadTrackingRotation = Quaternion.identity;
                 return;
             }
@@ -201,32 +200,6 @@ namespace OuterWildsHeadTracking.Camera.Core
 
             HandleTrackingLoss(rawAngles, deltaTime);
 
-            if (!_centerSet)
-            {
-                if (!rawAngles.IsValid)
-                {
-                    _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
-                        _smoothedYaw, _smoothedPitch, _smoothedRoll);
-                    cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
-                    return;
-                }
-
-                if (_stabilizationFramesRemaining > 0)
-                {
-                    _stabilizationFramesRemaining--;
-                    float t = 1f - UnityCoreModule::UnityEngine.Mathf.Exp(-TRACKING_LOSS_FADE_SPEED * deltaTime);
-                    _smoothedYaw *= (1f - t);
-                    _smoothedPitch *= (1f - t);
-                    _smoothedRoll *= (1f - t);
-                    _lastHeadTrackingRotation = CameraRotationComposer.GetTrackingOnlyRotation(
-                        _smoothedYaw, _smoothedPitch, _smoothedRoll);
-                    cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
-                    return;
-                }
-
-                SetCenter(rawAngles, mod);
-            }
-
             ComputeHeadTracking(rawAngles, mod, deltaTime);
             cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
         }
@@ -247,8 +220,9 @@ namespace OuterWildsHeadTracking.Camera.Core
         [HarmonyPostfix]
         public static void Start_Postfix(PlayerCameraController __instance)
         {
-            RecenterTracking();
-
+            // No recenter here. This runs on every solar system load, so every
+            // loop reset would re-baseline the center to whatever pose the head
+            // was in at the moment of the reset.
             var mod = HeadTrackingMod.Instance;
             if (mod == null) return;
 
@@ -280,7 +254,6 @@ namespace OuterWildsHeadTracking.Camera.Core
             if (!rawAngles.IsValid)
             {
                 _secondsWithoutData += deltaTime;
-                _stabilizationFramesRemaining = STABILIZATION_FRAME_COUNT;
 
                 if (_secondsWithoutData > TRACKING_LOSS_FADE_DELAY_SECONDS)
                 {
@@ -305,7 +278,6 @@ namespace OuterWildsHeadTracking.Camera.Core
         private static void SetCenter(OpenTrackClient.RawEulerAngles rawAngles, HeadTrackingMod mod)
         {
             mod.GetTrackingClient()?.SetCenter(rawAngles);
-            _centerSet = true;
             _lastHeadTrackingRotation = Quaternion.identity;
         }
 
