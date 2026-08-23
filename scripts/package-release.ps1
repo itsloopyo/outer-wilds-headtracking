@@ -74,17 +74,30 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 )
 Write-Host "  launcher-manifest.json (v$version)" -ForegroundColor Green
 
-# Copy documentation
-$docFiles = @("README.md", "LICENSE")
+# Copy documentation. LICENSE and THIRD-PARTY-NOTICES.md are the notices that
+# MIT requires to accompany the binaries in this ZIP, so a missing one is a
+# licence violation and must fail the build rather than warn and carry on.
+$docFiles = @("README.md", "LICENSE", "THIRD-PARTY-NOTICES.md", "CHANGELOG.md")
 foreach ($doc in $docFiles) {
     $docPath = Join-Path $projectRoot $doc
-    if (Test-Path $docPath) {
-        Copy-Item $docPath -Destination $stagingDir -Force
-        Write-Host "  $doc" -ForegroundColor Green
-    } else {
-        Write-Host "  WARNING: $doc not found" -ForegroundColor Yellow
+    if (-not (Test-Path $docPath)) {
+        throw "Required release document not found: $doc"
     }
+    Copy-Item $docPath -Destination $stagingDir -Force
+    Write-Host "  $doc" -ForegroundColor Green
 }
+
+# CameraUnlock.Core.dll ships in this ZIP and carries its own copyright
+# (CameraUnlock), which the mod's LICENSE (itsloopyo) does not cover. MIT wants
+# that notice travelling with the binary, so ship the submodule's LICENSE too.
+$licensesDir = Join-Path $stagingDir "licenses"
+New-Item -ItemType Directory -Path $licensesDir | Out-Null
+$coreLicense = Join-Path $projectRoot "cameraunlock-core\LICENSE"
+if (-not (Test-Path $coreLicense)) {
+    throw "cameraunlock-core LICENSE not found at $coreLicense. Run 'git submodule update --init'."
+}
+Copy-Item $coreLicense -Destination (Join-Path $licensesDir "cameraunlock-core-LICENSE.txt") -Force
+Write-Host "  licenses/cameraunlock-core-LICENSE.txt" -ForegroundColor Green
 
 Write-Host ""
 

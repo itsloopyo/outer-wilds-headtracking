@@ -11,7 +11,7 @@ Write-Host ""
 
 $allPassed = $true
 
-foreach ($file in @("README.md", "LICENSE")) {
+foreach ($file in @("README.md", "LICENSE", "THIRD-PARTY-NOTICES.md", "CHANGELOG.md", "cameraunlock-core\LICENSE")) {
     Write-Host "Checking $file..." -ForegroundColor Gray
     if (Test-Path (Join-Path $projectRoot $file)) {
         Write-Host "  $file exists" -ForegroundColor Green

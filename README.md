@@ -1,6 +1,6 @@
 # Outer Wilds Head Tracking
 
-![Mod GIF](assets/readme-clip.gif)
+![Mod GIF](https://raw.githubusercontent.com/itsloopyo/outer-wilds-headtracking/main/assets/readme-clip.gif)
 
 An **unofficial** head tracking mod for Outer Wilds that lets you look around naturally using your phone or dedicated head tracker.
 
@@ -92,7 +92,9 @@ pixi run install
 pixi run package
 ```
 
-The mod depends on the shared `CameraUnlock.Core` library (included as a git submodule in the `shared/` directory).
+The mod depends on the shared `CameraUnlock.Core` library, included as a git submodule in the `cameraunlock-core/` directory. Clone with `--recurse-submodules`, or run `git submodule update --init` in an existing clone.
+
+Game types are resolved at build time from the community `OuterWildsGameLibs` NuGet package, so the build needs no local Outer Wilds install and no game files are copied into this repository. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Project Structure
 
@@ -103,7 +105,7 @@ outer-wilds/
 ├── pixi.toml                  # Build configuration
 ├── scripts/
 │   ├── deploy.ps1             # Deploy to OWML
-│   ├── package.ps1            # Create release zip
+│   ├── package-release.ps1    # Create release zip
 │   └── uninstall.ps1          # Remove from OWML
 └── src/OuterWildsHeadTracking/
     ├── HeadTrackingMod.cs     # Main mod entry point
@@ -131,10 +133,22 @@ outer-wilds/
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) for details.
+
+This mod ships `CameraUnlock.Core.dll`, which is MIT under a separate copyright
+holder, so its notice travels in the release ZIP as well. Every third-party
+component, what it is licensed under and whether it is redistributed is recorded
+in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Credits
 
-- [Mobius Digital](https://www.mobiusdigitalgames.com/) - Outer Wilds
+- [Mobius Digital](https://www.mobiusdigitalgames.com/) and Annapurna Interactive - Outer Wilds
 - [OWML](https://github.com/ow-mods/owml) - Mod loading framework
-- [Harmony](https://github.com/pardeike/Harmony) - Runtime patching library
+- [Outer Wilds Mod Manager](https://github.com/ow-mods/ow-mod-man) - How users install this mod
+- [Harmony](https://github.com/pardeike/Harmony) / [HarmonyX](https://github.com/BepInEx/HarmonyX) - Runtime patching library
+- [OpenTrack](https://github.com/opentrack/opentrack) - The tracking protocol this mod speaks
+
+Outer Wilds is the property of Mobius Digital and Annapurna Interactive. This is
+an unofficial fan project, not affiliated with or endorsed by them, and it needs
+a legitimately purchased copy of the game. It redistributes no game code or
+assets. The demo clip above is gameplay footage and remains theirs.
