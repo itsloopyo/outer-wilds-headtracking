@@ -49,7 +49,9 @@ jobs:
         shell: pwsh
         run: pixi run package
 
-      - name: Verify installer was produced
+      # Unzip the release archive into a folder so upload-artifact doesn't
+      # nest a zip inside its own zip.
+      - name: Stage release contents for artifact
         shell: pwsh
         run: |
           $zip = Get-ChildItem release/OuterWildsHeadTracking-*.zip -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -57,3 +59,23 @@ jobs:
             Write-Host "::error::No release ZIP was produced by 'pixi run package'"
             exit 1
           }
+          $dest = "release/artifact-contents"
+          New-Item -ItemType Directory -Path $dest -Force | Out-Null
+          Expand-Archive -Path $zip.FullName -DestinationPath $dest -Force
+          Write-Host "Staged $($zip.Name)" -ForegroundColor Green
+
+      - name: Compute artifact name from ref
+        id: artifact
+        shell: pwsh
+        run: |
+          $branch = "${{ github.ref_name }}" -replace '[^A-Za-z0-9._-]', '-'
+          echo "name=OuterWildsHeadTracking-$branch" >> $env:GITHUB_OUTPUT
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: release/artifact-contents/
+          retention-days: 14
+          if-no-files-found: error
+          overwrite: true
