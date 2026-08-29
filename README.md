@@ -1,8 +1,8 @@
 # Outer Wilds Head Tracking
 
-![Mod GIF](https://raw.githubusercontent.com/itsloopyo/outer-wilds-headtracking/main/assets/readme-clip.gif)
+![Outer Wilds running with this mod](https://raw.githubusercontent.com/itsloopyo/outer-wilds-headtracking/main/assets/readme-clip.gif)
 
-An **unofficial** head tracking mod for Outer Wilds that lets you look around naturally using your phone or dedicated head tracker.
+An unofficial head tracking mod for Outer Wilds that moves the view with your head while your mouse or controller keeps aiming, driven by a webcam, phone, or any OpenTrack compatible tracker, with no VR headset required.
 
 ## Features
 
