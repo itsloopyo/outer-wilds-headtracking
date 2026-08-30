@@ -38,7 +38,7 @@ namespace OuterWildsHeadTracking.Camera.Utilities
         public static TemporaryRotationScope? RemoveHeadTracking(
             Transform? cameraTransform, Quaternion baseRotation)
         {
-            if (cameraTransform == null || baseRotation.IsUnset()) return null;
+            if (cameraTransform == null) return null;
 
             Quaternion targetLocalRotation = cameraTransform.parent != null
                 ? Quaternion.Inverse(cameraTransform.parent.rotation) * baseRotation
@@ -50,7 +50,6 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             Transform? cameraTransform, Quaternion baseRotation, Quaternion headTrackingRotation)
         {
             if (cameraTransform == null) return null;
-            if (baseRotation.IsUnset() || headTrackingRotation == Quaternion.identity) return null;
 
             Quaternion headTrackedWorld = baseRotation * headTrackingRotation;
             Quaternion targetLocalRotation = cameraTransform.parent != null
@@ -65,88 +64,6 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             _transform.localRotation = _savedRotation;
             _isActive = false;
             _transform = null;
-        }
-    }
-
-    /// <summary>
-    /// Variant of TemporaryRotationScope that operates on world-space rotation.
-    /// Use this for transforms that are not the camera (e.g., tool raycast transforms).
-    /// </summary>
-    public sealed class TemporaryWorldRotationScope : IDisposable
-    {
-        private Quaternion _savedRotation;
-        private Transform? _transform;
-        private bool _isActive;
-
-        private TemporaryWorldRotationScope()
-        {
-            _savedRotation = Quaternion.identity;
-            _transform = null;
-            _isActive = false;
-        }
-
-        /// <summary>
-        /// Temporarily applies a world rotation to the transform.
-        /// Must be disposed to restore original rotation.
-        /// </summary>
-        public static TemporaryWorldRotationScope? Apply(Transform? transform, Quaternion newWorldRotation)
-        {
-            if (transform == null)
-            {
-                return null;
-            }
-
-            var scope = new TemporaryWorldRotationScope
-            {
-                _savedRotation = transform.rotation,
-                _transform = transform,
-                _isActive = true
-            };
-
-            transform.rotation = newWorldRotation;
-            return scope;
-        }
-
-        /// <summary>
-        /// Temporarily applies head tracking to a raycast transform.
-        /// The transform will point in the head-tracked direction.
-        /// </summary>
-        /// <param name="transform">The transform to modify (e.g., tool's raycast transform).</param>
-        /// <param name="baseRotation">The base aim rotation (world space).</param>
-        /// <param name="headTrackingRotation">The head tracking rotation to apply.</param>
-        public static TemporaryWorldRotationScope? ApplyHeadTracking(
-            Transform? transform,
-            Quaternion baseRotation,
-            Quaternion headTrackingRotation)
-        {
-            if (transform == null)
-            {
-                return null;
-            }
-
-            if (baseRotation.IsUnset() || headTrackingRotation == Quaternion.identity)
-            {
-                return null;
-            }
-
-            return Apply(transform, baseRotation * headTrackingRotation);
-        }
-
-        /// <summary>
-        /// Restores the saved rotation to the transform.
-        /// Safe to call multiple times.
-        /// </summary>
-        public void Dispose()
-        {
-            if (!_isActive || _transform == null)
-            {
-                return;
-            }
-
-            _transform.rotation = _savedRotation;
-            _isActive = false;
-            _transform = null;
-            _savedRotation = Quaternion.identity;
         }
     }
 }

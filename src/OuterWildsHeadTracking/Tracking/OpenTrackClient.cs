@@ -38,12 +38,8 @@ namespace OuterWildsHeadTracking.Tracking
             _receiver = new CameraUnlock.Core.Protocol.OpenTrackReceiver();
             if (log != null) _receiver.Log = log;
 
-            // Initialize processor with smoothing disabled (SimpleCameraPatch applies the
-            // connection-selected smoothing itself on the composed rotation)
             _processor = new TrackingProcessor
             {
-                LocalSmoothing = 0f,
-                RemoteSmoothing = 0f,
                 Deadzone = DeadzoneSettings.None
             };
 
@@ -62,6 +58,9 @@ namespace OuterWildsHeadTracking.Tracking
         public void UpdateProcessorSettings()
         {
             if (_processor == null) return;
+
+            _processor.LocalSmoothing = HeadTrackingMod.LocalSmoothing;
+            _processor.RemoteSmoothing = HeadTrackingMod.RemoteSmoothing;
 
             // Configure sensitivity with inversion
             // Pitch needs negation (OpenTrack up = Unity down)
@@ -169,6 +168,10 @@ namespace OuterWildsHeadTracking.Tracking
             {
                 return null;
             }
+
+            // Re-read locality every frame so switching between a local tracker and a
+            // remote device picks up the other smoothing parameter without a restart.
+            _processor.IsRemoteConnection = _receiver.IsRemoteConnection;
 
             var rawPose = _receiver.GetLatestPose();
             var interpolatedPose = _poseInterpolator.Update(rawPose, deltaTime);

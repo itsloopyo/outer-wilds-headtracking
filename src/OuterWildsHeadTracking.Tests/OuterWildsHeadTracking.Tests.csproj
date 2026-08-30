@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- net48 to match the mod: the Unity and OWML assemblies it binds are the
+         real game ones, so the test host has to be able to load them as-is. -->
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>OuterWildsHeadTracking.Tests</AssemblyName>
+    <RootNamespace>OuterWildsHeadTracking.Tests</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OuterWildsHeadTracking\OuterWildsHeadTracking.csproj" />
+    <PackageReference Include="OuterWildsGameLibs" Version="1.1.16.1372" GeneratePathProperty="true">
+      <IncludeAssets>compile</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="OWML" Version="2.16.2" GeneratePathProperty="true">
+      <IncludeAssets>compile</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+      <ExcludeAssets>runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!-- The mod binds the game's real Unity/OWML assemblies and marks them
+       Private=False, so nothing lands beside the test host. Stage them here:
+       these are managed assemblies, so the parts of the mod that do not call
+       into Unity's native side load and run outside the game. -->
+  <Target Name="StageGameAssemblies" AfterTargets="Build">
+    <ItemGroup>
+      <GameAssembly Include="$(PkgOuterWildsGameLibs)\lib\*.dll" />
+      <GameAssembly Include="$(PkgOWML)\lib\net48\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(GameAssembly)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

@@ -78,7 +78,6 @@ namespace OuterWildsHeadTracking.Camera.UI
             if (headTracking == Quaternion.identity) return;
 
             var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-            if (baseRotation.IsUnset()) return;
 
             _savedRotation = cameraTransform.rotation;
             cameraTransform.rotation = baseRotation * headTracking;
@@ -104,11 +103,11 @@ namespace OuterWildsHeadTracking.Camera.UI
             var cameraTransform = SimpleCameraPatch._cameraTransform;
             if (cameraTransform == null) return;
 
+            // The only guard site with no head-tracking precheck above it, so this
+            // is the one place the base rotation can still be its initial value.
+            if (!SimpleCameraPatch._baseRotationCaptured) return;
+
             var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-            if (baseRotation.IsUnset() || baseRotation == Quaternion.identity)
-            {
-                return;
-            }
 
             var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
             if (headTracking == Quaternion.identity)

@@ -34,6 +34,11 @@ namespace OuterWildsHeadTracking.Camera.Core
 
         public static Quaternion _lastHeadTrackingRotation = Quaternion.identity;
         public static Quaternion _baseRotationBeforeHeadTracking = Quaternion.identity;
+
+        // The field above starts at identity, which is a real rotation and not a
+        // sentinel, so patches that run before the first Update/FixedUpdate postfix
+        // cannot tell "camera looking straight ahead" from "never captured".
+        public static bool _baseRotationCaptured = false;
         public static UnityCoreModule::UnityEngine.Transform? _cameraTransform = null;
 
         private static float _headTrackingInfluence = 1f;
@@ -87,6 +92,7 @@ namespace OuterWildsHeadTracking.Camera.Core
             _baseRotationBeforeHeadTracking = cameraTransform.parent != null
                 ? cameraTransform.parent.rotation * gameWantedRotation
                 : gameWantedRotation;
+            _baseRotationCaptured = true;
 
             cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
 
@@ -136,6 +142,7 @@ namespace OuterWildsHeadTracking.Camera.Core
             _baseRotationBeforeHeadTracking = cameraTransform.parent != null
                 ? cameraTransform.parent.rotation * gameWantedRotation
                 : gameWantedRotation;
+            _baseRotationCaptured = true;
 
             var mod = HeadTrackingMod.Instance;
             if (mod == null || !mod.IsTrackingEnabled())
@@ -257,16 +264,14 @@ namespace OuterWildsHeadTracking.Camera.Core
                 pitch *= headTrackingInfluence;
                 roll *= headTrackingInfluence;
 
-                // Locality is re-read every frame, so swapping a local tracker for a
-                // remote one switches parameter without restarting the game.
-                float smoothing = SmoothingUtils.GetEffectiveSmoothing(
-                    HeadTrackingMod.LocalSmoothing,
-                    HeadTrackingMod.RemoteSmoothing,
-                    trackingClient!.IsRemoteSource);
-
-                _smoothedYaw = SmoothingUtils.Smooth(_smoothedYaw, yaw, smoothing, deltaTime);
-                _smoothedPitch = SmoothingUtils.Smooth(_smoothedPitch, pitch, smoothing, deltaTime);
-                _smoothedRoll = SmoothingUtils.Smooth(_smoothedRoll, roll, smoothing, deltaTime);
+                // Already smoothed by the TrackingProcessor inside OpenTrackClient.
+                // Smoothing again here would put two exponential filters in series:
+                // the speed clamp in CalculateSmoothingFactor means a smoothing of 0
+                // is still a 20 ms time constant, not a bypass, so the second pass
+                // roughly doubled the lag instead of costing nothing.
+                _smoothedYaw = yaw;
+                _smoothedPitch = pitch;
+                _smoothedRoll = roll;
 
                 if (!mod.IsRotationActive())
                 {

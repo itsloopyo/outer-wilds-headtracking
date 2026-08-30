@@ -56,7 +56,6 @@ namespace OuterWildsHeadTracking.Camera.Effects
             if (headTracking == Quaternion.identity) return;
 
             var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-            if (baseRotation.IsUnset()) return;
 
             _savedRotation = cameraTransform.rotation;
             cameraTransform.rotation = baseRotation * headTracking;
