@@ -23,9 +23,9 @@ $version = $manifest.version
 Write-Host "Version: $version" -ForegroundColor Cyan
 Write-Host ""
 
-$packageName = "OuterWildsHeadTracking-$version"
-$stagingDir = Join-Path $releaseDir $packageName
-$zipPath = Join-Path $releaseDir "$packageName.zip"
+$modName = "OuterWildsHeadTracking"
+$stagingDir = Join-Path $releaseDir "staging-installer"
+$zipPath = Join-Path $releaseDir "$modName-v$version-installer.zip"
 
 # Clean previous package
 if (Test-Path $stagingDir) { Remove-Item -Recurse -Force $stagingDir }
