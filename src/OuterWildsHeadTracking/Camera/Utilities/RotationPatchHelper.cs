@@ -36,7 +36,7 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             if (headTracking == Quaternion.identity) return false;
 
             var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-            if (baseRotation == default || baseRotation == Quaternion.identity) return false;
+            if (baseRotation.IsUnset() || baseRotation == Quaternion.identity) return false;
 
             _scope = _mode == RotationPatchMode.RemoveHeadTracking
                 ? TemporaryRotationScope.RemoveHeadTracking(cameraTransform, baseRotation)

@@ -116,7 +116,7 @@ namespace OuterWildsHeadTracking.Camera.UI
 
             // Get the base camera rotation (without head tracking)
             var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-            if (baseRotation == default) return;
+            if (baseRotation.IsUnset()) return;
 
             // Raycast along the base aim direction to find the actual target distance.
             var baseForward = baseRotation * Vector3.forward;

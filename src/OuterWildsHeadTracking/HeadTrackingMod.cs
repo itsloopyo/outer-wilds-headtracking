@@ -33,6 +33,7 @@ namespace OuterWildsHeadTracking
         private bool _trackingStateBeforeModelShip = true;
         private bool _trackingStateBeforeSignalscopeZoom = true;
         private TrackingMode _trackingMode = TrackingMode.Both;
+        private bool _inputExceptionLogged;
 
         public static float YawSensitivity = 1.0f;
         public static float PitchSensitivity = 1.0f;
@@ -160,9 +161,19 @@ namespace OuterWildsHeadTracking
                         MessageType.Info);
                 }
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException ex)
             {
-                // Input system in flux during scene transition - skip this frame
+                // The keyboard device is reconfigured across a scene transition and
+                // reading it mid-swap throws. Skipping the frame is correct, but the
+                // exception is reported once so a real input fault is not mistaken
+                // for a transition.
+                if (!_inputExceptionLogged)
+                {
+                    _inputExceptionLogged = true;
+                    ModHelper?.Console.WriteLine(
+                        $"[HeadTracking] Hotkey polling skipped a frame: {ex.Message}",
+                        MessageType.Warning);
+                }
             }
         }
 
@@ -273,9 +284,9 @@ namespace OuterWildsHeadTracking
             PositionLimitY = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitY");
             PositionLimitZ = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitZ");
             PositionLimitZBack = (float)ModHelper.Config.GetSettingsValue<double>("positionLimitZBack");
-            if (PositionSensitivityX <= 0) PositionSensitivityX = 2.0f;
-            if (PositionSensitivityY <= 0) PositionSensitivityY = 2.0f;
-            if (PositionSensitivityZ <= 0) PositionSensitivityZ = 2.0f;
+            if (PositionSensitivityX <= 0) PositionSensitivityX = 4.0f;
+            if (PositionSensitivityY <= 0) PositionSensitivityY = 4.0f;
+            if (PositionSensitivityZ <= 0) PositionSensitivityZ = 4.0f;
 
             // Update processor settings when config changes
             _trackingClient?.UpdateProcessorSettings();

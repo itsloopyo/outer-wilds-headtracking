@@ -2,6 +2,7 @@ extern alias UnityCoreModule;
 using System;
 using HarmonyLib;
 using OuterWildsHeadTracking.Camera.Core;
+using OuterWildsHeadTracking.Camera.Utilities;
 using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
 
 namespace OuterWildsHeadTracking.Camera.Effects
@@ -55,7 +56,7 @@ namespace OuterWildsHeadTracking.Camera.Effects
             if (headTracking == Quaternion.identity) return;
 
             var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-            if (baseRotation == default) return;
+            if (baseRotation.IsUnset()) return;
 
             _savedRotation = cameraTransform.rotation;
             cameraTransform.rotation = baseRotation * headTracking;

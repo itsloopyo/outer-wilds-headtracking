@@ -38,7 +38,7 @@ namespace OuterWildsHeadTracking.Camera.Utilities
         public static TemporaryRotationScope? RemoveHeadTracking(
             Transform? cameraTransform, Quaternion baseRotation)
         {
-            if (cameraTransform == null || baseRotation == default) return null;
+            if (cameraTransform == null || baseRotation.IsUnset()) return null;
 
             Quaternion targetLocalRotation = cameraTransform.parent != null
                 ? Quaternion.Inverse(cameraTransform.parent.rotation) * baseRotation
@@ -50,7 +50,7 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             Transform? cameraTransform, Quaternion baseRotation, Quaternion headTrackingRotation)
         {
             if (cameraTransform == null) return null;
-            if (baseRotation == default || headTrackingRotation == Quaternion.identity) return null;
+            if (baseRotation.IsUnset() || headTrackingRotation == Quaternion.identity) return null;
 
             Quaternion headTrackedWorld = baseRotation * headTrackingRotation;
             Quaternion targetLocalRotation = cameraTransform.parent != null
@@ -124,7 +124,7 @@ namespace OuterWildsHeadTracking.Camera.Utilities
                 return null;
             }
 
-            if (baseRotation == default || headTrackingRotation == Quaternion.identity)
+            if (baseRotation.IsUnset() || headTrackingRotation == Quaternion.identity)
             {
                 return null;
             }
