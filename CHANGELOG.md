@@ -13,6 +13,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- The flashlight now turns 1.5x your head rotation rather than matching it, which is
+  what every other mod in the fleet does. When you turn your head your eyes end up
+  past the centre of the screen, so a beam matched to the view alone lands short of
+  what you are actually looking at. `flashlightMultiplier` in the mod settings sets
+  it: `1.0` restores the old behaviour, `0` leaves the beam on the aim.
+
 ### Fixed
 
 - Rotation was filtered twice. `OpenTrackClient` built its `TrackingProcessor` with

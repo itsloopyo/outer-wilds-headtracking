@@ -15,6 +15,7 @@
     "positionLimitY": 0.20,
     "positionLimitZ": 0.40,
     "positionLimitZBack": 0.0,
+    "flashlightMultiplier": 1.5,
     "neckModelEnabled": false,
     "neckModelHeight": 0.10,
     "neckModelForward": 0.08

@@ -288,6 +288,33 @@ namespace OuterWildsHeadTracking
             if (PositionSensitivityY <= 0) PositionSensitivityY = 4.0f;
             if (PositionSensitivityZ <= 0) PositionSensitivityZ = 4.0f;
 
+            // The flashlight leads the view rather than matching it. 1.0 matches it, and
+            // ZERO pins the beam to the aim, which is what the unmodded game does - so a
+            // zero is passed through, not treated as a missing key. Rejecting it as "must
+            // be an old config file" is what made the README and the CHANGELOG describe a
+            // setting the code did not have; a key genuinely absent from a user's file
+            // gets its value from default-config.json, which is what that file is for.
+            //
+            // Out of range is refused rather than clamped, matching every other reader in
+            // the fleet, so a mistyped 500 does not run silently at 5.
+            float flashlightMultiplier =
+                (float)ModHelper.Config.GetSettingsValue<double>("flashlightMultiplier");
+            if (flashlightMultiplier >= 0f
+                && flashlightMultiplier <= CameraUnlock.Core.Effects.HeadFollowLightSettings.MaxMultiplier)
+            {
+                Camera.Effects.FlashlightPatch.Multiplier = flashlightMultiplier;
+            }
+            else
+            {
+                ModHelper.Console.WriteLine(string.Format(
+                    "flashlightMultiplier {0} is outside 0-{1} - using {2}",
+                    flashlightMultiplier,
+                    CameraUnlock.Core.Effects.HeadFollowLightSettings.MaxMultiplier,
+                    CameraUnlock.Core.Effects.HeadFollowLightSettings.DefaultMultiplier));
+                Camera.Effects.FlashlightPatch.Multiplier =
+                    CameraUnlock.Core.Effects.HeadFollowLightSettings.DefaultMultiplier;
+            }
+
             // Update processor settings when config changes
             _trackingClient?.UpdateProcessorSettings();
         }

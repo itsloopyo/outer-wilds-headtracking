@@ -10,7 +10,7 @@ An unofficial head tracking mod for Outer Wilds that moves the view with your he
 - **6DOF head tracking**: Yaw, pitch, roll rotation plus positional tracking (lean in/out/side-to-side) via OpenTrack UDP protocol
 - **Per-connection smoothing**: Separate smoothing for a tracker on this machine and for a remote WiFi device, picked from the packet source address
 - **Smart auto-disable**: Tracking automatically pauses during model ship piloting, signalscope zoom, and pause menu
-- **Full game integration**: Flashlight follows your gaze, Nomai Translator targets where you look, quantum objects respect head-tracked view direction
+- **Full game integration**: Flashlight follows your gaze and leads it a little, so the beam lands on what your eyes are on rather than on the centre of the screen. Nomai Translator targets where you look, quantum objects respect head-tracked view direction
 
 ## Requirements
 
@@ -119,6 +119,7 @@ Settings are available in the OWML Mod Manager or in-game mod menu. The mod crea
 | `rollSensitivity` | 1.0 | Head tilt sensitivity |
 | `localSmoothing` | 0.0 | Smoothing when the tracker runs on this machine (loopback). 0 = none, 1 = heavy |
 | `remoteSmoothing` | 0.15 | Smoothing when the tracker is a remote device on the network. 0 = none, 1 = heavy |
+| `flashlightMultiplier` | 1.5 | How far the flashlight turns relative to your head. 1.0 matches the view, 0 leaves the beam on your aim |
 | `positionEnabled` | true | Enable positional tracking (lean in/out/side-to-side) |
 | `positionSensitivityX` | 4.0 | Lateral position multiplier |
 | `positionSensitivityY` | 4.0 | Vertical position multiplier |
