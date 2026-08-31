@@ -14,7 +14,7 @@ nor any part of the game.
 
 | Component | Version | Licence | How it ships |
 |-----------|---------|---------|--------------|
-| cameraunlock-core | `67a82e334bcf32979d17965eab4b0f37a48a6ad0` | MIT | Shipped as `CameraUnlock.Core.dll` in the release ZIP |
+| cameraunlock-core | `fec3b4c8a6fe9c45401cf65d3d43d4f5acd22b72` | MIT | Shipped as `CameraUnlock.Core.dll` in the release ZIP |
 | OWML | 2.16.2 (compile), 2.9.0+ (runtime) | MIT | Not shipped. Compile-time reference; supplied at runtime by the Outer Wilds Mod Manager |
 | Lib.Harmony | 2.4.1 | MIT | Not shipped. Compile-time reference only |
 | HarmonyX | supplied by OWML | MIT | Not shipped. Loaded at runtime from OWML |
@@ -32,7 +32,7 @@ It is our own shared code, but it carries a different copyright holder from this
 mod's `LICENSE` (which is `Copyright (c) 2025 itsloopyo`), so its notice is
 reproduced here and also shipped as `licenses/cameraunlock-core-LICENSE.txt`.
 
-- Pinned commit: `67a82e334bcf32979d17965eab4b0f37a48a6ad0`
+- Pinned commit: `fec3b4c8a6fe9c45401cf65d3d43d4f5acd22b72`
 - Source: https://github.com/itsloopyo/cameraunlock-core
 
 ```
