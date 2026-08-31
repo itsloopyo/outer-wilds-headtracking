@@ -41,17 +41,17 @@ namespace OuterWildsHeadTracking
         // Smoothing is picked per connection from the packet source address:
         // loopback senders get LocalSmoothing, remote network devices get RemoteSmoothing.
         // Both cover rotation and position.
-        public static float LocalSmoothing = 0.0f;
-        public static float RemoteSmoothing = 0.15f;
+        public static float LocalSmoothing = CameraUnlock.Core.Math.SmoothingUtils.DefaultLocalSmoothing;
+        public static float RemoteSmoothing = CameraUnlock.Core.Math.SmoothingUtils.DefaultRemoteSmoothing;
 
         // Position settings
         public static bool PositionEnabled = true;
         public static float PositionSensitivityX = 4.0f;
         public static float PositionSensitivityY = 4.0f;
         public static float PositionSensitivityZ = 4.0f;
-        public static float PositionLimitX = 0.30f;
-        public static float PositionLimitY = 0.20f;
-        public static float PositionLimitZ = 0.40f;
+        public static float PositionLimitX = CameraUnlock.Core.Data.PositionSettings.Default.LimitX;
+        public static float PositionLimitY = CameraUnlock.Core.Data.PositionSettings.Default.LimitY;
+        public static float PositionLimitZ = CameraUnlock.Core.Data.PositionSettings.Default.LimitZ;
         public static float PositionLimitZBack = 0.0f;
 
         public new IModHelper? ModHelper { get; private set; }
