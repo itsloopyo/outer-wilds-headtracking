@@ -1,24 +1,12 @@
 # Changelog
 
-## [1.3.0] - 2026-08-20
-
-### Added
-
-- drop mod-side centring, let the tracker app own the centre
-
-### Fixed
-
-- migrate to the per-connection smoothing pair
-- give the forward lean its own travel budget again
-
 ## [Unreleased]
 
 ### Changed
 
-- The flashlight now turns 1.5x your head rotation rather than matching it, which is
-  what every other mod in the fleet does. When you turn your head your eyes end up
-  past the centre of the screen, so a beam matched to the view alone lands short of
-  what you are actually looking at. `flashlightMultiplier` in the mod settings sets
+- The flashlight now turns 1.5x your head rotation rather than matching it. When you
+  turn your head your eyes end up past the centre of the screen, so a beam matched to
+  the view alone lands short of what you are actually looking at. `flashlightMultiplier` in the mod settings sets
   it: `1.0` restores the old behaviour, `0` leaves the beam on the aim.
 
 ### Fixed
@@ -44,8 +32,11 @@
   disables itself for the fraction of a degree where a level view compares equal to
   identity.
 
+## [1.3.0] - 2026-08-20
+
 ### Added
 
+- drop mod-side centring, let the tracker app own the centre
 - Name the UDP port in the startup log line, and point the troubleshooting steps
   at `%APPDATA%\OuterWildsModManager\OWML\Logs\latest.txt` so a bug report has
   one file to attach
@@ -60,6 +51,11 @@
 - Remove all mod-side recentring: the `Home` / `Ctrl+Shift+T` hotkey, the tracker-app
   recenter request handling and the centre offset. The tracker app owns the centre, so
   the mod now applies the incoming pose as absolute. Centre the view in your tracking app
+
+### Fixed
+
+- migrate to the per-connection smoothing pair
+- give the forward lean its own travel budget again
 
 ## [1.2.3] - 2026-08-07
 
