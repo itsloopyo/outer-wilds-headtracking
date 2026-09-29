@@ -11,7 +11,8 @@ namespace OuterWildsHeadTracking.Camera.UI
     /// </summary>
     public static class ReferenceFrameTrackerPatch
     {
-        private static readonly RotationPatchHelper _helper = new RotationPatchHelper(RotationPatchMode.RemoveHeadTracking);
+        private static readonly RotationPatchHelper _lineOfSightHelper = new RotationPatchHelper();
+        private static readonly RotationPatchHelper _mapViewHelper = new RotationPatchHelper();
 
         public static void ApplyPatches(Harmony harmony)
         {
@@ -20,23 +21,25 @@ namespace OuterWildsHeadTracking.Camera.UI
                 throw new InvalidOperationException("Could not find ReferenceFrameTracker type!");
 
             var findInLineOfSightMethod = AccessTools.Method(trackerType, "FindReferenceFrameInLineOfSight");
-            if (findInLineOfSightMethod != null)
-            {
-                harmony.Patch(findInLineOfSightMethod,
-                    prefix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Prefix))),
-                    postfix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Postfix))));
-            }
+            if (findInLineOfSightMethod == null)
+                throw new InvalidOperationException("Could not find ReferenceFrameTracker.FindReferenceFrameInLineOfSight method!");
 
             var findInMapViewMethod = AccessTools.Method(trackerType, "FindReferenceFrameInMapView");
-            if (findInMapViewMethod != null)
-            {
-                harmony.Patch(findInMapViewMethod,
-                    prefix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Prefix))),
-                    postfix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(Postfix))));
-            }
+            if (findInMapViewMethod == null)
+                throw new InvalidOperationException("Could not find ReferenceFrameTracker.FindReferenceFrameInMapView method!");
+
+            harmony.Patch(findInLineOfSightMethod,
+                prefix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(LineOfSight_Prefix))),
+                postfix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(LineOfSight_Postfix))));
+
+            harmony.Patch(findInMapViewMethod,
+                prefix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(MapView_Prefix))),
+                postfix: new HarmonyMethod(AccessTools.Method(typeof(ReferenceFrameTrackerPatch), nameof(MapView_Postfix))));
         }
 
-        public static void Prefix() => _helper.BeginPatch();
-        public static void Postfix() => _helper.EndPatch();
+        public static void LineOfSight_Prefix() => _lineOfSightHelper.BeginPatch();
+        public static void LineOfSight_Postfix() => _lineOfSightHelper.EndPatch();
+        public static void MapView_Prefix() => _mapViewHelper.BeginPatch();
+        public static void MapView_Postfix() => _mapViewHelper.EndPatch();
     }
 }

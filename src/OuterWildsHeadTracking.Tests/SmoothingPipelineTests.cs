@@ -56,7 +56,7 @@ namespace OuterWildsHeadTracking.Tests
                 // Settle the receiver and the interpolator on a zero pose first, so
                 // what the step measures is the filter and not the startup transient.
                 var deadline = Stopwatch.StartNew();
-                while (!client.PeekRawEulerAngles().IsValid)
+                while (!client.IsReceiving)
                 {
                     Send(0d);
                     Assert.True(deadline.ElapsedMilliseconds < 5000,

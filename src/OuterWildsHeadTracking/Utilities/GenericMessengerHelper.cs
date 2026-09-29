@@ -16,10 +16,9 @@ namespace OuterWildsHeadTracking.Utilities
         /// <param name="targetTypeName">The generic type parameter name (e.g., "Signalscope").</param>
         /// <param name="handlerMethodName">The handler method name on the target instance.</param>
         /// <param name="target">The target instance containing the handler method.</param>
-        /// <returns>True if listener was added successfully.</returns>
-        public static bool AddListener(string eventName, string targetTypeName, string handlerMethodName, object target)
+        public static void AddListener(string eventName, string targetTypeName, string handlerMethodName, object target)
         {
-            return ManageListener("AddListener", eventName, targetTypeName, handlerMethodName, target);
+            ManageListener("AddListener", eventName, targetTypeName, handlerMethodName, target);
         }
 
         /// <summary>
@@ -29,36 +28,33 @@ namespace OuterWildsHeadTracking.Utilities
         /// <param name="targetTypeName">The generic type parameter name (e.g., "Signalscope").</param>
         /// <param name="handlerMethodName">The handler method name on the target instance.</param>
         /// <param name="target">The target instance containing the handler method.</param>
-        /// <returns>True if listener was removed successfully.</returns>
-        public static bool RemoveListener(string eventName, string targetTypeName, string handlerMethodName, object target)
+        public static void RemoveListener(string eventName, string targetTypeName, string handlerMethodName, object target)
         {
-            return ManageListener("RemoveListener", eventName, targetTypeName, handlerMethodName, target);
+            ManageListener("RemoveListener", eventName, targetTypeName, handlerMethodName, target);
         }
 
-        private static bool ManageListener(string messengerMethodName, string eventName, string targetTypeName, string handlerMethodName, object target)
+        private static void ManageListener(string messengerMethodName, string eventName, string targetTypeName, string handlerMethodName, object target)
         {
-            var globalMessengerType = AccessTools.TypeByName("GlobalMessenger`1");
-            if (globalMessengerType == null) return false;
+            var globalMessengerType = AccessTools.TypeByName("GlobalMessenger`1")
+                ?? throw new InvalidOperationException("Could not find GlobalMessenger`1 type!");
 
-            var parameterType = AccessTools.TypeByName(targetTypeName);
-            if (parameterType == null) return false;
+            var parameterType = AccessTools.TypeByName(targetTypeName)
+                ?? throw new InvalidOperationException($"Could not find {targetTypeName} type!");
 
             var messengerType = globalMessengerType.MakeGenericType(parameterType);
-            var messengerMethod = AccessTools.Method(messengerType, messengerMethodName);
-            if (messengerMethod == null) return false;
+            var messengerMethod = AccessTools.Method(messengerType, messengerMethodName)
+                ?? throw new InvalidOperationException($"Could not find GlobalMessenger<{targetTypeName}>.{messengerMethodName}!");
 
             // GlobalMessenger uses Callback<T> delegate, not Action<T>
-            var callbackType = AccessTools.TypeByName("Callback`1");
-            if (callbackType == null) return false;
+            var callbackType = AccessTools.TypeByName("Callback`1")
+                ?? throw new InvalidOperationException("Could not find Callback`1 type!");
 
             var delegateType = callbackType.MakeGenericType(parameterType);
-            var handlerMethod = AccessTools.Method(target.GetType(), handlerMethodName, new Type[] { parameterType });
-            if (handlerMethod == null) return false;
+            var handlerMethod = AccessTools.Method(target.GetType(), handlerMethodName, new Type[] { parameterType })
+                ?? throw new InvalidOperationException($"Could not find {target.GetType().Name}.{handlerMethodName}!");
 
             var handlerDelegate = Delegate.CreateDelegate(delegateType, target, handlerMethod);
             messengerMethod.Invoke(null, new object[] { eventName, handlerDelegate });
-
-            return true;
         }
     }
 }

@@ -1,6 +1,5 @@
 extern alias UnityCoreModule;
 extern alias UnityUIModule;
-using OuterWildsHeadTracking.Camera.Utilities;
 using OuterWildsHeadTracking.Camera.Core;
 using Vector2 = UnityCoreModule::UnityEngine.Vector2;
 using Vector3 = UnityCoreModule::UnityEngine.Vector3;
@@ -9,33 +8,32 @@ using RectTransform = UnityCoreModule::UnityEngine.RectTransform;
 using MonoBehaviour = UnityCoreModule::UnityEngine.MonoBehaviour;
 using Screen = UnityCoreModule::UnityEngine.Screen;
 using Canvas = UnityUIModule::UnityEngine.Canvas;
-using Physics = UnityEngine.Physics;
-using QueryTriggerInteraction = UnityEngine.QueryTriggerInteraction;
 
 namespace OuterWildsHeadTracking.Camera.UI
 {
     /// <summary>
-    /// MonoBehaviour that updates reticle position in LateUpdate
-    /// This runs AFTER all game Update logic, ensuring we override the game's reticle positioning
+    /// Moves the game's reticle, and the centre prompt list with it, to where the clean
+    /// aim sits in the head-tracked view. Driven from the player camera's onPreRender.
+    ///
+    /// The aim is projected as a direction, with no raycast for depth. The game's
+    /// interaction rays (FirstPersonManipulator) start at the camera transform's position,
+    /// and the lean is on that same transform while they run and while the frame renders,
+    /// so the aim ray and the render share one eye and every point along the ray projects
+    /// to the same pixel.
     /// </summary>
     public class ReticleUpdater : MonoBehaviour
     {
-        private const float MaxRaycastDistance = 1000f;
-        private const float MinRaycastDistance = 0.5f;
-        private const float DistanceSmoothingRate = 15f;
-        private static float _lastHitDistance = 100f;
+        private const int CACHE_RETRY_INTERVAL = 60;
 
         private static ReticleUpdater _instance = null!;
         private RectTransform _reticleTransform = null!;
         private Vector2 _reticleHomePosition;
         private bool _reticleMoved = false;
-        private UnityCoreModule::UnityEngine.Camera _mainCamera = null!;
         private RectTransform _centerPromptTransform = null!;
         private Canvas _centerPromptCanvas = null!;
         private Vector2 _centerPromptHomePosition;
         private bool _centerPromptMoved = false;
-        private int _lastCacheAttemptFrame = -1;
-        private const int CACHE_RETRY_INTERVAL = 60;
+        private int _lastCacheAttemptFrame = -CACHE_RETRY_INTERVAL - 1;
 
         public static ReticleUpdater GetInstance()
         {
@@ -44,95 +42,36 @@ namespace OuterWildsHeadTracking.Camera.UI
 
         public static void Create()
         {
-            var mod = HeadTrackingMod.Instance;
-
             if (_instance != null)
             {
                 return;
             }
 
-            // Create a new GameObject for the updater
             var go = new GameObject("ReticleUpdater");
             DontDestroyOnLoad(go);
             _instance = go.AddComponent<ReticleUpdater>();
-
         }
 
-        private void Start()
+        public void UpdateReticlePosition(UnityCoreModule::UnityEngine.Camera playerCamera)
         {
-            // Find the reticle GameObject
-            var reticleObject = GameObject.Find("Reticule/Image");
-            if (reticleObject != null)
+            // The HUD is rebuilt on every loop, so the references go stale and are found
+            // again. GameObject.Find is too slow to run every frame, hence the throttle.
+            if (_reticleTransform == null || _centerPromptTransform == null)
             {
-                _reticleTransform = reticleObject.GetComponent<RectTransform>();
-                _reticleHomePosition = _reticleTransform.anchoredPosition;
-                _reticleMoved = false;
-            }
-
-            _mainCamera = UnityCoreModule::UnityEngine.Camera.main;
-        }
-
-        public void UpdateReticlePosition()
-        {
-            int currentFrame = UnityCoreModule::UnityEngine.Time.frameCount;
-
-            // Re-acquire references if they've become stale (e.g., after death/respawn)
-            // Only retry every CACHE_RETRY_INTERVAL frames to avoid repeated expensive GameObject.Find calls
-            if (_reticleTransform == null && (currentFrame - _lastCacheAttemptFrame) > CACHE_RETRY_INTERVAL)
-            {
-                _lastCacheAttemptFrame = currentFrame;
-                var reticleObject = GameObject.Find("Reticule/Image");
-                if (reticleObject != null)
+                int currentFrame = UnityCoreModule::UnityEngine.Time.frameCount;
+                if (currentFrame - _lastCacheAttemptFrame > CACHE_RETRY_INTERVAL)
                 {
-                    _reticleTransform = reticleObject.GetComponent<RectTransform>();
-                    _reticleHomePosition = _reticleTransform.anchoredPosition;
-                    _reticleMoved = false;
+                    _lastCacheAttemptFrame = currentFrame;
+                    CacheReferences();
                 }
             }
 
-            if (_mainCamera == null && (currentFrame - _lastCacheAttemptFrame) > CACHE_RETRY_INTERVAL)
-            {
-                _lastCacheAttemptFrame = currentFrame;
-                _mainCamera = UnityCoreModule::UnityEngine.Camera.main;
-            }
+            if (_reticleTransform == null) return;
 
-            if (_centerPromptTransform == null && (currentFrame - _lastCacheAttemptFrame) > CACHE_RETRY_INTERVAL)
-            {
-                _lastCacheAttemptFrame = currentFrame;
-                var promptManager = Locator.GetPromptManager();
-                var centerList = promptManager != null
-                    ? promptManager.GetScreenPromptList(PromptPosition.Center)
-                    : null;
-                if (centerList != null)
-                {
-                    _centerPromptTransform = centerList.GetComponent<RectTransform>();
-                    _centerPromptCanvas = centerList.GetComponentInParent<Canvas>();
-                    _centerPromptHomePosition = _centerPromptTransform.anchoredPosition;
-                    _centerPromptMoved = false;
-                }
-            }
+            var aimDirection = SimpleCameraPatch.ToWorld(SimpleCameraPatch._gameLocalRotation) * Vector3.forward;
+            var cameraTransform = playerCamera.transform;
+            var screenPoint = playerCamera.WorldToScreenPoint(cameraTransform.position + aimDirection);
 
-            if (_reticleTransform == null || _mainCamera == null) return;
-
-            // Get the base camera rotation (without head tracking)
-            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-
-            // Raycast along the base aim direction to find the actual target distance.
-            var baseForward = baseRotation * Vector3.forward;
-            Vector3 aimOrigin = _mainCamera.transform.position;
-
-            UnityEngine.RaycastHit hit;
-            if (Physics.Raycast(aimOrigin, baseForward, out hit, MaxRaycastDistance,
-                    Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
-                && hit.distance >= MinRaycastDistance)
-            {
-                float t = 1f - UnityCoreModule::UnityEngine.Mathf.Exp(-DistanceSmoothingRate * UnityCoreModule::UnityEngine.Time.deltaTime);
-                _lastHitDistance = UnityCoreModule::UnityEngine.Mathf.Lerp(_lastHitDistance, hit.distance, t);
-            }
-
-            var screenPoint = _mainCamera.WorldToScreenPoint(aimOrigin + baseForward * _lastHitDistance);
-
-            // Update reticle position to match base aim direction
             _reticleTransform.position = new Vector3(screenPoint.x, screenPoint.y, 0);
             _reticleMoved = true;
 
@@ -146,6 +85,35 @@ namespace OuterWildsHeadTracking.Camera.UI
                 _centerPromptTransform.anchoredPosition =
                     _centerPromptHomePosition + pixelDelta / _centerPromptCanvas.scaleFactor;
                 _centerPromptMoved = true;
+            }
+        }
+
+        private void CacheReferences()
+        {
+            if (_reticleTransform == null)
+            {
+                var reticleObject = GameObject.Find("Reticule/Image");
+                if (reticleObject != null)
+                {
+                    _reticleTransform = reticleObject.GetComponent<RectTransform>();
+                    _reticleHomePosition = _reticleTransform.anchoredPosition;
+                    _reticleMoved = false;
+                }
+            }
+
+            if (_centerPromptTransform == null)
+            {
+                var promptManager = Locator.GetPromptManager();
+                var centerList = promptManager != null
+                    ? promptManager.GetScreenPromptList(PromptPosition.Center)
+                    : null;
+                if (centerList != null)
+                {
+                    _centerPromptTransform = centerList.GetComponent<RectTransform>();
+                    _centerPromptCanvas = centerList.GetComponentInParent<Canvas>();
+                    _centerPromptHomePosition = _centerPromptTransform.anchoredPosition;
+                    _centerPromptMoved = false;
+                }
             }
         }
 

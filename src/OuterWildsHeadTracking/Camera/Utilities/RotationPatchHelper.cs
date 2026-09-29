@@ -1,53 +1,41 @@
 extern alias UnityCoreModule;
 using OuterWildsHeadTracking.Camera.Core;
 using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
+using Transform = UnityCoreModule::UnityEngine.Transform;
 
 namespace OuterWildsHeadTracking.Camera.Utilities
 {
-    public enum RotationPatchMode
-    {
-        RemoveHeadTracking,
-        ApplyHeadTracking
-    }
-
     /// <summary>
-    /// Manages a TemporaryRotationScope for a single patch.
-    /// Call BeginPatch in prefix and EndPatch in postfix.
+    /// Takes head tracking off the camera for the length of one game method.
+    /// Call BeginPatch in the prefix and EndPatch in the postfix. One instance per
+    /// patched method: a method that re-entered itself would overwrite the saved
+    /// rotation.
     /// </summary>
     public class RotationPatchHelper
     {
-        private TemporaryRotationScope? _scope;
-        private readonly RotationPatchMode _mode;
+        private Transform? _transform;
+        private Quaternion _savedLocalRotation;
 
-        public RotationPatchHelper(RotationPatchMode mode)
-        {
-            _mode = mode;
-        }
-
-        public bool BeginPatch()
+        public void BeginPatch()
         {
             var mod = HeadTrackingMod.Instance;
-            if (mod == null || !mod.IsTrackingEnabled()) return false;
+            if (mod == null || !mod.IsTrackingEnabled()) return;
 
             var cameraTransform = SimpleCameraPatch._cameraTransform;
-            if (cameraTransform == null) return false;
+            if (cameraTransform == null) return;
 
-            var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
-            if (headTracking == Quaternion.identity) return false;
+            if (SimpleCameraPatch._lastHeadTrackingRotation == Quaternion.identity) return;
 
-            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-
-            _scope = _mode == RotationPatchMode.RemoveHeadTracking
-                ? TemporaryRotationScope.RemoveHeadTracking(cameraTransform, baseRotation)
-                : TemporaryRotationScope.ApplyBaseRotation(cameraTransform, baseRotation, headTracking);
-
-            return _scope != null;
+            _transform = cameraTransform;
+            _savedLocalRotation = cameraTransform.localRotation;
+            cameraTransform.localRotation = SimpleCameraPatch._gameLocalRotation;
         }
 
         public void EndPatch()
         {
-            _scope?.Dispose();
-            _scope = null;
+            if (_transform == null) return;
+            _transform.localRotation = _savedLocalRotation;
+            _transform = null;
         }
     }
 }

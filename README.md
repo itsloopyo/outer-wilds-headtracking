@@ -175,7 +175,7 @@ outer-wilds/
     ├── HeadTrackingMod.cs     # Main mod entry point
     ├── Camera/
     │   ├── Core/              # Camera rotation patches
-    │   ├── Effects/           # Flashlight, fog, quantum
+    │   ├── Effects/           # Flashlight
     │   ├── UI/                # Reticle, markers, translator
     │   └── Utilities/         # Rotation helpers
     ├── Configuration/         # Constants

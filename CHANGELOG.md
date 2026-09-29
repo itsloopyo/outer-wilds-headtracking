@@ -11,6 +11,22 @@
 
 ### Fixed
 
+- Head tracking stayed off for good if a loop ended while you were flying the model
+  ship, because the exit event it waited for never fires on a reset. It now comes back
+  at the start of every loop. Pressing End while flying the model ship or zoomed in
+  with the signalscope is also no longer undone when you stop.
+- The view now tilts toward whoever you are talking to, and toward anything else the
+  game points your camera at, with head tracking on. The mod used to switch that off
+  entirely, because the game measured the angle with your head pitch included and
+  steered to cancel it out; it now measures from where you are aiming.
+- At the ship's flight console the signalscope scans along the ship's nose again, as
+  in the unmodded game, instead of along your view.
+- In rotation-only mode, and while the tracker was not sending, the last lean was put
+  back on the camera at every physics step.
+- Less work per frame: the reticle no longer fires a raycast every frame, and the
+  visibility checks of quantum objects no longer rewrite the camera rotation twice
+  each.
+
 - Rotation was filtered twice. `OpenTrackClient` built its `TrackingProcessor` with
   both smoothing values pinned to 0 and called that "smoothing disabled", then
   `SimpleCameraPatch` ran a second exponential filter over the result. 0 is not a

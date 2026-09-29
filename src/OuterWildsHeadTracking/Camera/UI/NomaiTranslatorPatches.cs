@@ -14,7 +14,7 @@ namespace OuterWildsHeadTracking.Camera.UI
     public static class NomaiTranslatorPatches
     {
         private static readonly RotationPatchHelper _helper =
-            new RotationPatchHelper(RotationPatchMode.RemoveHeadTracking);
+            new RotationPatchHelper();
 
         public static void ApplyPatches(Harmony harmony)
         {

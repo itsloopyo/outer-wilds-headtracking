@@ -97,6 +97,9 @@ namespace OuterWildsHeadTracking.Tracking
         /// </summary>
         public bool IsRemoteSource => _receiver?.IsRemoteConnection ?? false;
 
+        /// <summary>True while tracker packets are arriving.</summary>
+        public bool IsReceiving => _receiver?.IsReceiving ?? false;
+
         /// <summary>
         /// Latches one line the first time packets arrive. Called from the mod's
         /// Update, not from the camera patch: whether anything reached the port
@@ -190,31 +193,6 @@ namespace OuterWildsHeadTracking.Tracking
             public float Yaw { get; set; }
             public float Pitch { get; set; }
             public float Roll { get; set; }
-        }
-
-        public struct RawEulerAngles
-        {
-            public float Yaw { get; set; }
-            public float Pitch { get; set; }
-            public float Roll { get; set; }
-            public bool IsValid { get; set; }
-        }
-
-        public RawEulerAngles PeekRawEulerAngles()
-        {
-            if (_receiver == null || !_receiver.IsReceiving)
-            {
-                return new RawEulerAngles { IsValid = false };
-            }
-
-            _receiver.GetRawRotation(out float yaw, out float pitch, out float roll);
-            return new RawEulerAngles
-            {
-                Yaw = yaw,
-                Pitch = pitch,
-                Roll = roll,
-                IsValid = true
-            };
         }
     }
 }

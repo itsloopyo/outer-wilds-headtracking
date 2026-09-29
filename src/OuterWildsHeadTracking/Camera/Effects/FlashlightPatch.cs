@@ -5,19 +5,16 @@ using CameraUnlock.Core.Effects;
 using HarmonyLib;
 using OuterWildsHeadTracking.Camera.Core;
 using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
+using Transform = UnityCoreModule::UnityEngine.Transform;
 
 namespace OuterWildsHeadTracking.Camera.Effects
 {
     /// <summary>
-    /// Points the flashlight where the head is looking rather than where the body is
-    /// aiming.
+    /// Points the flashlight where the head is looking, leading the view.
     ///
-    /// Flashlight takes its beam direction off camera.transform.forward inside
-    /// FixedUpdate, and the tracked rotation is written to the view matrix rather than to
-    /// that transform - so there is no head pose on it to work from. The prefix composes
-    /// the clean aim with the head pose for the length of that one method and the postfix
-    /// takes it straight back off, which is what keeps everything else in the game reading
-    /// the transform the game itself set.
+    /// Flashlight takes its beam direction off the camera transform inside FixedUpdate.
+    /// The prefix swaps the camera's head rotation for a scaled one for the length of
+    /// that one method and the postfix puts the camera back as it was.
     ///
     /// The beam LEADS the view by <see cref="HeadFollowLightSettings.DefaultMultiplier"/>
     /// rather than matching it, and the scaling is the shared one: you keep your eyes on
@@ -26,8 +23,8 @@ namespace OuterWildsHeadTracking.Camera.Effects
     /// </summary>
     public static class FlashlightPatch
     {
-        private static Quaternion _savedRotation = Quaternion.identity;
-        private static bool _rotationModified;
+        private static Transform? _modifiedTransform;
+        private static Quaternion _savedLocalRotation;
 
         /// <summary>How far the beam turns relative to the head. Read from the mod config.</summary>
         public static float Multiplier { get; set; } = HeadFollowLightSettings.DefaultMultiplier;
@@ -70,22 +67,16 @@ namespace OuterWildsHeadTracking.Camera.Effects
             var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
             if (headTracking == Quaternion.identity) return;
 
-            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-
-            _savedRotation = cameraTransform.rotation;
-            cameraTransform.rotation = baseRotation * Lead(headTracking);
-            _rotationModified = true;
+            _modifiedTransform = cameraTransform;
+            _savedLocalRotation = cameraTransform.localRotation;
+            cameraTransform.localRotation = SimpleCameraPatch._gameLocalRotation * Lead(headTracking);
         }
 
         public static void FixedUpdate_Postfix()
         {
-            if (!_rotationModified) return;
-
-            var cameraTransform = SimpleCameraPatch._cameraTransform;
-            if (cameraTransform == null) return;
-
-            cameraTransform.rotation = _savedRotation;
-            _rotationModified = false;
+            if (_modifiedTransform == null) return;
+            _modifiedTransform.localRotation = _savedLocalRotation;
+            _modifiedTransform = null;
         }
 
         private static Quaternion Lead(Quaternion headTracking)

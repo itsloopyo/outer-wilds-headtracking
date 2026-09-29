@@ -26,19 +26,5 @@ namespace OuterWildsHeadTracking.Camera.Utilities
             Quaternion rollQ = Quaternion.AngleAxis(roll, Vector3.forward);
             return yawQ * pitchQ * rollQ;
         }
-
-        /// <summary>
-        /// Creates a head tracking rotation with an influence multiplier.
-        /// The influence scales all angles (0 = no tracking, 1 = full tracking).
-        /// </summary>
-        /// <param name="yaw">Yaw angle in degrees.</param>
-        /// <param name="pitch">Pitch angle in degrees.</param>
-        /// <param name="roll">Roll angle in degrees.</param>
-        /// <param name="influence">Influence multiplier (0-1).</param>
-        /// <returns>Quaternion representing the scaled head tracking rotation.</returns>
-        public static Quaternion GetTrackingOnlyRotation(float yaw, float pitch, float roll, float influence)
-        {
-            return GetTrackingOnlyRotation(yaw * influence, pitch * influence, roll * influence);
-        }
     }
 }

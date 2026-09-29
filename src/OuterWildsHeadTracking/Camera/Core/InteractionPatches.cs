@@ -13,10 +13,8 @@ namespace OuterWildsHeadTracking.Camera.Core
     [HarmonyPatch(typeof(FirstPersonManipulator))]
     public static class FirstPersonManipulatorPatch
     {
-        private static readonly RotationPatchHelper _updateHelper =
-            new RotationPatchHelper(RotationPatchMode.RemoveHeadTracking);
-        private static readonly RotationPatchHelper _lateUpdateHelper =
-            new RotationPatchHelper(RotationPatchMode.RemoveHeadTracking);
+        private static readonly RotationPatchHelper _updateHelper = new RotationPatchHelper();
+        private static readonly RotationPatchHelper _lateUpdateHelper = new RotationPatchHelper();
 
         [HarmonyPatch("Update")]
         [HarmonyPrefix]
@@ -43,8 +41,7 @@ namespace OuterWildsHeadTracking.Camera.Core
     [HarmonyPatch(typeof(ItemTool))]
     public static class ItemToolPatch
     {
-        private static readonly RotationPatchHelper _helper =
-            new RotationPatchHelper(RotationPatchMode.RemoveHeadTracking);
+        private static readonly RotationPatchHelper _helper = new RotationPatchHelper();
 
         [HarmonyPatch("UpdateInteract")]
         [HarmonyPrefix]

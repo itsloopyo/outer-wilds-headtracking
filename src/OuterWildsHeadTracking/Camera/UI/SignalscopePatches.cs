@@ -2,22 +2,18 @@ extern alias UnityCoreModule;
 using System;
 using HarmonyLib;
 using OuterWildsHeadTracking.Camera.Core;
-using OuterWildsHeadTracking.Camera.Utilities;
 using Quaternion = UnityCoreModule::UnityEngine.Quaternion;
 using Vector3 = UnityCoreModule::UnityEngine.Vector3;
 
 namespace OuterWildsHeadTracking.Camera.UI
 {
     /// <summary>
-    /// Patches for Signalscope tool - ensures signal detection uses head direction.
-    /// With view matrix, the transform is clean so we temporarily apply head tracking
-    /// for methods that read camera.transform directly.
+    /// Points signal detection where the head is looking. On foot GetScopeDirection
+    /// returns the signalscope tool's own forward rather than the camera's, so the
+    /// head-tracked camera direction is substituted for it.
     /// </summary>
     public static class SignalscopePatches
     {
-        private static Quaternion _savedRotation = Quaternion.identity;
-        private static bool _rotationModified = false;
-
         public static void ApplyPatches(Harmony harmony)
         {
             var signalscopeType = AccessTools.TypeByName("Signalscope");
@@ -26,31 +22,6 @@ namespace OuterWildsHeadTracking.Camera.UI
                 throw new InvalidOperationException("Could not find Signalscope type!");
             }
 
-            PatchSignalscopeUpdate(harmony, signalscopeType);
-            PatchGetScopeDirection(harmony, signalscopeType);
-        }
-
-        private static void PatchSignalscopeUpdate(Harmony harmony, Type signalscopeType)
-        {
-            var signalscopeUpdateMethod = AccessTools.Method(signalscopeType, "Update");
-            if (signalscopeUpdateMethod == null)
-            {
-                throw new InvalidOperationException("Could not find Signalscope.Update method!");
-            }
-
-            var signalscopePrefix = AccessTools.Method(typeof(SignalscopePatches), nameof(Signalscope_Update_Prefix));
-            var signalscopePostfix = AccessTools.Method(typeof(SignalscopePatches), nameof(Signalscope_Update_Postfix));
-
-            if (signalscopePrefix == null || signalscopePostfix == null)
-            {
-                throw new InvalidOperationException("Could not find SignalscopePatches prefix/postfix methods!");
-            }
-
-            harmony.Patch(signalscopeUpdateMethod, prefix: new HarmonyMethod(signalscopePrefix), postfix: new HarmonyMethod(signalscopePostfix));
-        }
-
-        private static void PatchGetScopeDirection(Harmony harmony, Type signalscopeType)
-        {
             var getScopeDirectionMethod = AccessTools.Method(signalscopeType, "GetScopeDirection");
             if (getScopeDirectionMethod == null)
             {
@@ -66,58 +37,24 @@ namespace OuterWildsHeadTracking.Camera.UI
             harmony.Patch(getScopeDirectionMethod, postfix: new HarmonyMethod(scopeDirPostfix));
         }
 
-        public static void Signalscope_Update_Prefix()
-        {
-            var mod = HeadTrackingMod.Instance;
-            if (mod == null || !mod.IsTrackingEnabled()) return;
-
-            var cameraTransform = SimpleCameraPatch._cameraTransform;
-            if (cameraTransform == null) return;
-
-            var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
-            if (headTracking == Quaternion.identity) return;
-
-            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-
-            _savedRotation = cameraTransform.rotation;
-            cameraTransform.rotation = baseRotation * headTracking;
-            _rotationModified = true;
-        }
-
-        public static void Signalscope_Update_Postfix()
-        {
-            if (!_rotationModified) return;
-
-            var cameraTransform = SimpleCameraPatch._cameraTransform;
-            if (cameraTransform == null) return;
-
-            cameraTransform.rotation = _savedRotation;
-            _rotationModified = false;
-        }
-
         public static void Signalscope_GetScopeDirection_Postfix(ref Vector3 __result)
         {
+            // At the flight console the game scans along the ship's forward, not the camera's.
+            if (PlayerState.AtFlightConsole()) return;
+
             var mod = HeadTrackingMod.Instance;
             if (mod == null || !mod.IsTrackingEnabled()) return;
 
-            var cameraTransform = SimpleCameraPatch._cameraTransform;
-            if (cameraTransform == null) return;
-
-            // The only guard site with no head-tracking precheck above it, so this
-            // is the one place the base rotation can still be its initial value.
+            if (SimpleCameraPatch._cameraTransform == null) return;
             if (!SimpleCameraPatch._baseRotationCaptured) return;
 
-            var baseRotation = SimpleCameraPatch._baseRotationBeforeHeadTracking;
-
+            var local = SimpleCameraPatch._gameLocalRotation;
             var headTracking = SimpleCameraPatch._lastHeadTrackingRotation;
-            if (headTracking == Quaternion.identity)
+            if (headTracking != Quaternion.identity)
             {
-                __result = baseRotation * Vector3.forward;
+                local *= headTracking;
             }
-            else
-            {
-                __result = (baseRotation * headTracking) * Vector3.forward;
-            }
+            __result = SimpleCameraPatch.ToWorld(local) * Vector3.forward;
         }
     }
 }

@@ -33,18 +33,26 @@ namespace OuterWildsHeadTracking.Camera.Core
         private const float TRACKING_LOSS_FADE_SPEED = 2.0f;
 
         public static Quaternion _lastHeadTrackingRotation = Quaternion.identity;
-        public static Quaternion _baseRotationBeforeHeadTracking = Quaternion.identity;
+
+        // The camera's localRotation as the game set it, before head tracking. Kept in
+        // local space because the player body the camera hangs off moves between the
+        // capture and the patches that read it (physics steps, planet rotation), and a
+        // world-space copy goes stale by exactly that motion.
+        public static Quaternion _gameLocalRotation = Quaternion.identity;
 
         // The field above starts at identity, which is a real rotation and not a
         // sentinel, so patches that run before the first Update/FixedUpdate postfix
         // cannot tell "camera looking straight ahead" from "never captured".
         public static bool _baseRotationCaptured = false;
         public static UnityCoreModule::UnityEngine.Transform? _cameraTransform = null;
+        private static UnityCoreModule::UnityEngine.Camera? _playerCamera = null;
 
         private static float _headTrackingInfluence = 1f;
 
-        private static AccessTools.FieldRef<PlayerCameraController, float>? _degreesXRef;
-        private static AccessTools.FieldRef<PlayerCameraController, float>? _degreesYRef;
+        private static readonly AccessTools.FieldRef<PlayerCameraController, float> DegreesXRef =
+            FastFieldRef.Create<PlayerCameraController, float>("_degreesX");
+        private static readonly AccessTools.FieldRef<PlayerCameraController, float> DegreesYRef =
+            FastFieldRef.Create<PlayerCameraController, float>("_degreesY");
 
         public static float _smoothedYaw = 0f;
         public static float _smoothedPitch = 0f;
@@ -53,9 +61,6 @@ namespace OuterWildsHeadTracking.Camera.Core
         // Position tracking state
         public static Vec3 _lastPositionOffset = Vec3.Zero;
         private static bool _positionOffsetApplied = false;
-
-        // Frame coordination for tracking data drain
-        public static int _lastDrainedFrame = -1;
 
         [HarmonyPatch("FixedUpdate")]
         [HarmonyPrefix]
@@ -72,31 +77,16 @@ namespace OuterWildsHeadTracking.Camera.Core
         [HarmonyPostfix]
         public static void FixedUpdate_Postfix(PlayerCameraController __instance)
         {
-            if (_lastHeadTrackingRotation == Quaternion.identity) return;
-
             var cameraTransform = __instance.transform;
-            if (cameraTransform == null) return;
 
-            // Lazy-init field refs (FixedUpdate may run before first Update)
-            if (_degreesXRef == null || _degreesYRef == null)
+            if (_lastHeadTrackingRotation != Quaternion.identity)
             {
-                _degreesXRef = FastFieldRef.Create<PlayerCameraController, float>("_degreesX");
-                _degreesYRef = FastFieldRef.Create<PlayerCameraController, float>("_degreesY");
+                // Re-apply head tracking rotation (game's UpdateRotation just reset it)
+                _gameLocalRotation = GameLocalRotation(__instance);
+                _baseRotationCaptured = true;
+                cameraTransform.localRotation = _gameLocalRotation * _lastHeadTrackingRotation;
             }
 
-            // Re-apply head tracking rotation (game's UpdateRotation just reset it)
-            float degreesX = _degreesXRef(__instance);
-            float degreesY = _degreesYRef(__instance);
-            var gameWantedRotation = Quaternion.Euler(-degreesY, degreesX, 0f);
-
-            _baseRotationBeforeHeadTracking = cameraTransform.parent != null
-                ? cameraTransform.parent.rotation * gameWantedRotation
-                : gameWantedRotation;
-            _baseRotationCaptured = true;
-
-            cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
-
-            // Re-apply position offset
             if (_lastPositionOffset.X != 0f || _lastPositionOffset.Y != 0f || _lastPositionOffset.Z != 0f)
             {
                 cameraTransform.localPosition += new Vector3(
@@ -121,28 +111,14 @@ namespace OuterWildsHeadTracking.Camera.Core
         public static void Update_Postfix(PlayerCameraController __instance)
         {
             var cameraTransform = __instance.transform;
-            if (cameraTransform == null)
-            {
-                return;
-            }
-
             _cameraTransform = cameraTransform;
 
-            if (_degreesXRef == null || _degreesYRef == null)
-            {
-                _degreesXRef = FastFieldRef.Create<PlayerCameraController, float>("_degreesX");
-                _degreesYRef = FastFieldRef.Create<PlayerCameraController, float>("_degreesY");
-            }
-
-            float gameDegreesX = _degreesXRef(__instance);
-            float gameDegreesY = _degreesYRef(__instance);
-
-            var gameWantedRotation = Quaternion.Euler(-gameDegreesY, gameDegreesX, 0f);
-
-            _baseRotationBeforeHeadTracking = cameraTransform.parent != null
-                ? cameraTransform.parent.rotation * gameWantedRotation
-                : gameWantedRotation;
+            _gameLocalRotation = GameLocalRotation(__instance);
             _baseRotationCaptured = true;
+
+            // Update_Prefix has already taken last frame's lean off. Whatever this frame
+            // does not re-apply must not be re-added by the next FixedUpdate_Postfix.
+            _lastPositionOffset = Vec3.Zero;
 
             var mod = HeadTrackingMod.Instance;
             if (mod == null || !mod.IsTrackingEnabled())
@@ -157,43 +133,31 @@ namespace OuterWildsHeadTracking.Camera.Core
                 return;
             }
 
-            var trackingClient = mod.GetTrackingClient();
-            if (trackingClient == null)
-            {
-                _lastHeadTrackingRotation = Quaternion.identity;
-                return;
-            }
+            var trackingClient = mod.GetTrackingClient()!;
 
             // Use unscaledDeltaTime: head tracking must respond in real time even when
             // the game is paused (e.g. PauseType.Reading while using the Nomai translator).
             float deltaTime = UnityCoreModule::UnityEngine.Time.unscaledDeltaTime;
 
-            int currentFrame = UnityCoreModule::UnityEngine.Time.frameCount;
-            if (_lastDrainedFrame != currentFrame)
-            {
-                trackingClient.PeekRawEulerAngles();
-                _lastDrainedFrame = currentFrame;
-            }
+            HandleTrackingLoss(trackingClient.IsReceiving, deltaTime);
 
-            var rawAngles = trackingClient.PeekRawEulerAngles();
-
-            HandleTrackingLoss(rawAngles, deltaTime);
-
-            ComputeHeadTracking(rawAngles, mod, deltaTime);
-            cameraTransform.localRotation = gameWantedRotation * _lastHeadTrackingRotation;
+            ComputeHeadTracking(trackingClient, mod, cameraTransform, deltaTime);
+            cameraTransform.localRotation = _gameLocalRotation * _lastHeadTrackingRotation;
         }
+
+        // UpdateLockOnTargeting steers _degreesY by the angle between the camera's
+        // forward and the lock-on target. Left head-tracked, that angle includes the
+        // head pitch, so the game pitches the aim to cancel the head out and the view
+        // pins to the target. Run it against the clean rotation instead.
+        private static readonly RotationPatchHelper _lockOnHelper = new RotationPatchHelper();
 
         [HarmonyPatch("UpdateLockOnTargeting")]
         [HarmonyPrefix]
-        public static bool UpdateLockOnTargeting_Prefix(PlayerCameraController __instance)
-        {
-            var mod = HeadTrackingMod.Instance;
-            if (mod == null || !mod.IsTrackingEnabled())
-            {
-                return true;
-            }
-            return false;
-        }
+        public static void UpdateLockOnTargeting_Prefix() => _lockOnHelper.BeginPatch();
+
+        [HarmonyPatch("UpdateLockOnTargeting")]
+        [HarmonyPostfix]
+        public static void UpdateLockOnTargeting_Postfix() => _lockOnHelper.EndPatch();
 
         [HarmonyPatch("Start")]
         [HarmonyPostfix]
@@ -202,14 +166,35 @@ namespace OuterWildsHeadTracking.Camera.Core
             var mod = HeadTrackingMod.Instance;
             if (mod == null) return;
 
+            // A new loop. A suppression whose exit event never fired in the last one
+            // (the loop ended mid model-ship flight) must not carry into this one.
+            mod.ClearSuppression();
+
+            _playerCamera = __instance.GetComponent<OWCamera>().mainCamera;
+
             ReticleUpdater.Create();
             UnityCoreModule::UnityEngine.Camera.onPreRender -= OnCameraPreRender;
             UnityCoreModule::UnityEngine.Camera.onPreRender += OnCameraPreRender;
         }
 
+        /// <summary>World rotation for a camera-local rotation, against the live parent.</summary>
+        public static Quaternion ToWorld(Quaternion localRotation)
+        {
+            var parent = _cameraTransform!.parent;
+            return parent != null ? parent.rotation * localRotation : localRotation;
+        }
+
+        private static Quaternion GameLocalRotation(PlayerCameraController controller)
+        {
+            return Quaternion.Euler(-DegreesYRef(controller), DegreesXRef(controller), 0f);
+        }
+
         private static void OnCameraPreRender(UnityCoreModule::UnityEngine.Camera cam)
         {
-            if (cam != UnityCoreModule::UnityEngine.Camera.main) return;
+            // Every camera in the scene raises this (HUD, map, probe, reflections), so
+            // compare against the cached player camera rather than Camera.main, which on
+            // Unity 2019.4 is a tag search on every call.
+            if (cam != _playerCamera) return;
             if (_cameraTransform == null) return;
             if (_lastHeadTrackingRotation == Quaternion.identity)
             {
@@ -222,12 +207,12 @@ namespace OuterWildsHeadTracking.Camera.Core
                 return;
             }
 
-            ReticleUpdater.GetInstance()?.UpdateReticlePosition();
+            ReticleUpdater.GetInstance()?.UpdateReticlePosition(cam);
         }
 
-        private static void HandleTrackingLoss(OpenTrackClient.RawEulerAngles rawAngles, float deltaTime)
+        private static void HandleTrackingLoss(bool isReceiving, float deltaTime)
         {
-            if (!rawAngles.IsValid)
+            if (!isReceiving)
             {
                 _secondsWithoutData += deltaTime;
 
@@ -247,11 +232,10 @@ namespace OuterWildsHeadTracking.Camera.Core
             }
         }
 
-        private static void ComputeHeadTracking(OpenTrackClient.RawEulerAngles rawAngles, HeadTrackingMod mod, float deltaTime)
+        private static void ComputeHeadTracking(OpenTrackClient trackingClient, HeadTrackingMod mod,
+            UnityCoreModule::UnityEngine.Transform cameraTransform, float deltaTime)
         {
-            var trackingClient = mod.GetTrackingClient();
-
-            var processed = trackingClient?.GetProcessedRotation(deltaTime);
+            var processed = trackingClient.GetProcessedRotation(deltaTime);
 
             if (processed.HasValue)
             {
@@ -285,7 +269,7 @@ namespace OuterWildsHeadTracking.Camera.Core
 
                 // Position tracking: apply to localPosition so markers see the offset.
                 // Cleaned up in FixedUpdate_Prefix/Update_Prefix before game logic.
-                if (mod.IsPositionActive() && trackingClient != null && _cameraTransform != null)
+                if (mod.IsPositionActive())
                 {
                     var headRotQ = QuaternionUtils.FromYawPitchRoll(
                         _smoothedYaw, _smoothedPitch, _smoothedRoll);
@@ -310,7 +294,7 @@ namespace OuterWildsHeadTracking.Camera.Core
                     // so this is the single place the two conventions meet.
                     _lastPositionOffset = new Vec3(scaledPos.X, scaledPos.Y, -scaledPos.Z);
 
-                    _cameraTransform.localPosition += new Vector3(
+                    cameraTransform.localPosition += new Vector3(
                         _lastPositionOffset.X, _lastPositionOffset.Y, _lastPositionOffset.Z);
                     _positionOffsetApplied = true;
                 }

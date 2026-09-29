@@ -30,8 +30,12 @@ namespace OuterWildsHeadTracking
         private Harmony? _harmony;
         private OpenTrackClient? _trackingClient;
         private bool _trackingEnabled = true;
-        private bool _trackingStateBeforeModelShip = true;
-        private bool _trackingStateBeforeSignalscopeZoom = true;
+
+        // Game states that hold tracking off, kept apart from the player's own toggle so
+        // an End press during one is not undone when it ends, and overlapping states
+        // cannot restore each other's saved value.
+        private bool _suppressedByModelShip;
+        private bool _suppressedBySignalscopeZoom;
         private TrackingMode _trackingMode = TrackingMode.Both;
         private bool _inputExceptionLogged;
 
@@ -71,9 +75,9 @@ namespace OuterWildsHeadTracking
                 return;
             }
 
+            _harmony = new Harmony("itsloopyo.OuterWildsHeadTracking");
             try
             {
-                _harmony = new Harmony("itsloopyo.OuterWildsHeadTracking");
                 _harmony.PatchAll(Assembly.GetExecutingAssembly());
 
                 // Apply manual patches for types that aren't directly accessible
@@ -81,7 +85,12 @@ namespace OuterWildsHeadTracking
             }
             catch (Exception ex)
             {
-                ModHelper.Console.WriteLine($"[HeadTracking] Failed to apply patches: {ex.Message}", MessageType.Error);
+                // Half the patches in place would leave game logic reading a head-tracked
+                // camera with nothing taking it back off, so the mod stays out entirely.
+                _harmony.UnpatchAll(_harmony.Id);
+                _harmony = null;
+                ModHelper.Console.WriteLine($"[HeadTracking] Failed to apply patches, head tracking is disabled: {ex}", MessageType.Error);
+                return;
             }
 
             try
@@ -113,7 +122,7 @@ namespace OuterWildsHeadTracking
             }
             catch (Exception ex)
             {
-                ModHelper.Console.WriteLine($"[HeadTracking] Startup error: {ex.Message}", MessageType.Error);
+                ModHelper.Console.WriteLine($"[HeadTracking] Startup error: {ex}", MessageType.Error);
             }
         }
 
@@ -179,30 +188,33 @@ namespace OuterWildsHeadTracking
 
         private void OnEnterModelShip(OWRigidbody modelShipBody)
         {
-            // Save current tracking state and disable tracking while piloting model ship
-            // This prevents the camera from getting locked during model ship flight
-            _trackingStateBeforeModelShip = _trackingEnabled;
-            _trackingEnabled = false;
+            _suppressedByModelShip = true;
         }
 
         private void OnExitModelShip()
         {
-            // Restore previous tracking state when exiting model ship
-            _trackingEnabled = _trackingStateBeforeModelShip;
+            _suppressedByModelShip = false;
         }
 
         private void OnEnterSignalscopeZoom(object signalscope)
         {
-            // Save current tracking state and disable tracking while zoomed in
-            // Zoomed signalscope makes head tracking too sensitive for precise aiming
-            _trackingStateBeforeSignalscopeZoom = _trackingEnabled;
-            _trackingEnabled = false;
+            _suppressedBySignalscopeZoom = true;
         }
 
         private void OnExitSignalscopeZoom()
         {
-            // Restore previous tracking state when exiting zoom
-            _trackingEnabled = _trackingStateBeforeSignalscopeZoom;
+            _suppressedBySignalscopeZoom = false;
+        }
+
+        /// <summary>
+        /// Ends every game-state suppression. The exit events are not guaranteed: the
+        /// loop can end mid model-ship flight, and the scene reloads without
+        /// ExitRemoteFlightConsole ever firing.
+        /// </summary>
+        public void ClearSuppression()
+        {
+            _suppressedByModelShip = false;
+            _suppressedBySignalscopeZoom = false;
         }
 
         private void OnDestroy()
@@ -233,7 +245,8 @@ namespace OuterWildsHeadTracking
         {
             // Don't check IsConnected() here - let the tracking client handle reconnection
             // by continuing to read from the socket even after a timeout
-            return _trackingEnabled && _trackingClient != null;
+            return _trackingEnabled && !_suppressedByModelShip && !_suppressedBySignalscopeZoom
+                && _trackingClient != null;
         }
 
         public bool IsRotationActive()

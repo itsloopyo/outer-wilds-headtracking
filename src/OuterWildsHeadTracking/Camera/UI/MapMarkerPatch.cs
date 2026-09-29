@@ -1,16 +1,13 @@
 extern alias UnityCoreModule;
-using System;
 using HarmonyLib;
-using OuterWildsHeadTracking.Camera.Core;
 using OuterWildsHeadTracking.Camera.Effects;
 
 namespace OuterWildsHeadTracking.Camera.UI
 {
     /// <summary>
-    /// Applies sub-patches for marker-adjacent systems (signalscope, flashlight, etc.)
-    /// and patches OWExtensions.WorldToCanvasPosition.
-    /// Rotation is auto-compensated by canvas parenting. Position is handled via
-    /// view matrix in SimpleCameraPatch (no canvas movement = no marker drift).
+    /// Applies the manual patches for types that aren't directly accessible at compile time.
+    /// Canvas markers need no patch: head tracking is on the camera transform when they
+    /// project through it.
     /// </summary>
     public static class MapMarkerPatch
     {
@@ -18,7 +15,6 @@ namespace OuterWildsHeadTracking.Camera.UI
         {
             NomaiTranslatorPatches.ApplyPatches(harmony);
             SignalscopePatches.ApplyPatches(harmony);
-            QuantumVisibilityPatch.ApplyPatches(harmony);
             FlashlightPatch.ApplyPatches(harmony);
             ReferenceFrameTrackerPatch.ApplyPatches(harmony);
         }
