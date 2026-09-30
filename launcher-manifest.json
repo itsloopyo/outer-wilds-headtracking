@@ -11,10 +11,10 @@
   "loader": null,
 
   "files": [
-    { "source": "OuterWildsHeadTracking.dll", "target": "OuterWildsHeadTracking.dll" },
-    { "source": "CameraUnlock.Core.dll", "target": "CameraUnlock.Core.dll" },
-    { "source": "manifest.json", "target": "manifest.json" },
-    { "source": "default-config.json", "target": "default-config.json" }
+    { "source": "OuterWildsHeadTracking.dll", "target": "OuterWildsHeadTracking.dll", "anchor": "mod_home" },
+    { "source": "CameraUnlock.Core.dll", "target": "CameraUnlock.Core.dll", "anchor": "mod_home" },
+    { "source": "manifest.json", "target": "manifest.json", "anchor": "mod_home" },
+    { "source": "default-config.json", "target": "default-config.json", "anchor": "mod_home" }
   ],
 
   "runtime_requirements": [],
@@ -25,7 +25,7 @@
     "manager_url": "https://outerwildsmods.com/",
     "loader": "OWML",
     "owml_version": "2.9.0",
-    "deploy_root": "%APPDATA%/OuterWildsModManager/OWML/Mods/itsloopyo.OuterWildsHeadTracking/",
+    "owml_mod_id": "itsloopyo.OuterWildsHeadTracking",
     "owml_manifest": "manifest.json"
   }
 }
